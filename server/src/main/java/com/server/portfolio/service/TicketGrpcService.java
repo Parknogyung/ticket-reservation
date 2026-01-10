@@ -76,10 +76,11 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
         AtomicLong reservationId = new AtomicLong(-1);
 
         try {
-            // 락 시도 (최대 3초 대기, 락 획득 후 10초 뒤 자동 해제)
-            boolean available = lock.tryLock(6, 11, TimeUnit.SECONDS);
+            // 락 시도 (최대 10초 대기, 락 획득 후 10초 뒤 자동 해제)
+            boolean available = lock.tryLock(10, 10, TimeUnit.SECONDS);
 
             if (!available) {
+                log.warn("락 획득 실패: seatId={}, userId={}", seatId, userId);
                 throw new RuntimeException("접속자가 많아 처리가 지연되고 있습니다.");
             }
 

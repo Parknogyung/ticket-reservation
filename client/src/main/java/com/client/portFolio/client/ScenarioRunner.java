@@ -20,8 +20,8 @@ public class ScenarioRunner implements CommandLineRunner {
     private TicketServiceGrpc.TicketServiceBlockingStub ticketStub;
 
     // 테스트 설정
-    private static final int USER_COUNT = 1000; // 1,000명이 동시 접속
-    private static final int TOTAL_SEATS = 50;  // 준비된 좌석 수
+    private static final int USER_COUNT = 100000; // 1,000명이 동시 접속
+    private static final int TOTAL_SEATS = 500;  // 준비된 좌석 수
 
     @Override
     public void run(String... args) throws Exception {
@@ -68,18 +68,14 @@ public class ScenarioRunner implements CommandLineRunner {
 
                         if (resRes.getSuccess()) {
                             successCount.incrementAndGet();
-                             log.info("User {} : 좌석 {} 예약 성공!", userId, targetSeatId);
                         } else {
                             failCount.incrementAndGet();
-                            log.warn("예약 실패 (User {}): {}", userId, resRes.getMessage());
                         }
                     } else {
                         failCount.incrementAndGet(); // 대기열 진입 실패
-                        log.warn("🚨 대기열 진입 실패 (User {}): 순번 {}", userId, tokenRes.getWaitPosition());
                     }
 
                 } catch (Exception e) {
-                    log.error("통신 에러: " + e.getMessage());
                     failCount.incrementAndGet();
                 } finally {
                     latch.countDown(); // 작업 끝남 알림
@@ -100,7 +96,7 @@ public class ScenarioRunner implements CommandLineRunner {
         log.info("❌ 예약 실패: {}", failCount.get());
         log.info("================================");
 
-        // 검증: 성공 횟수는 절대 총 좌석 수(50)를 넘으면 안 됨!
+        // 검증: 성공 횟수는 절대 총 좌석 수(500)를 넘으면 안 됨!
         if (successCount.get() > TOTAL_SEATS) {
             log.error("🚨 치명적 오류: 준비된 좌석보다 더 많이 예약되었습니다! (동시성 제어 실패)");
         } else {
