@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Global Ticket - Real Reservation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #64748b;
+            --accent: #f59e0b;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.5;
+        }
+
+        .navbar {
+            background: #fff;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+            cursor: pointer;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        /* Concert List View */
+        .view-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .view-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1.5px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: #eff6ff;
+        }
+
+        .concert-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .concert-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        .concert-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .concert-info {
+            padding: 20px;
+        }
+
+        .concert-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .concert-date {
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+        }
+
+        .concert-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #ecfdf5;
+            color: var(--success);
+        }
+
+        /* Seat Selection View */
+        #seat-view {
+            display: none;
+        }
+
+        .back-btn {
+            margin-bottom: 20px;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .seat-layout {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 40px;
+        }
+
+        .seat-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 10px;
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .seat {
+            aspect-ratio: 1;
+            border-radius: 6px;
+            background: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid #e2e8f0;
+        }
+
+        .seat.AVAILABLE {
+            background: #ecfdf5;
+            color: var(--success);
+            border-color: #a7f3d0;
+        }
+
+        .seat.RESERVED {
+            background: #fef2f2;
+            color: var(--error);
+            border-color: #fecaca;
+            cursor: not-allowed;
+        }
+
+        .seat.selected {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary-dark);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 32px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 1rem;
+        }
+
+        #status-toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            background: #334155;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            display: none;
+            z-index: 2000;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="logo" onclick="showListView()">GLOBAL TICKET</div>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <span style="font-weight: 600;"><span sec:authentication="name">User</span>님</span>
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="btn btn-outline" style="padding: 6px 16px;">Logout</button>
+            </form>
+        </div>
+    </nav>
+
+    <div class="container" id="list-view">
+        <div class="view-header">
+            <h2 class="view-title">Available Concerts</h2>
+            <button class="btn btn-primary" onclick="openRegisterModal()">+ Register Ticket</button>
+        </div>
+        <div id="concert-container" class="concert-grid">
+            <!-- Loading -->
+            <p>Loading concerts...</p>
+        </div>
+    </div>
+
+    <div class="container" id="seat-view">
+        <div class="back-btn" onclick="showListView()">← Back to list</div>
+        <div class="view-header">
+            <h2 id="current-concert-title" class="view-title">-</h2>
+            <p id="current-concert-date" style="color: var(--text-sub);"></p>
+        </div>
+
+        <div class="seat-layout">
+            <div id="seat-container" class="seat-grid">
+                <!-- Seats will be rendered here -->
+            </div>
+            <div class="booking-card">
+                <div style="background: white; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
+                    <h3 style="margin-bottom: 16px;">Reservation Summary</h3>
+                    <div id="selection-info" style="display: none;">
+                        <p style="margin-bottom: 8px; font-size: 1.1rem;">Selected Seat: <strong>#<span
+                                    id="selected-seat-num">-</span></strong></p>
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 10px;"
+                            onclick="reserveNow()">Confirm Booking</button>
+                    </div>
+                    <p id="no-selection-msg" style="color: var(--text-sub);">Please select a green seat.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="register-modal" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 24px;">Register New Ticket</h2>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="reg-title" placeholder="e.g. Coldplay Live 2026">
+            </div>
+            <div class="form-group">
+                <label>Seat Count</label>
+                <input type="number" id="reg-count" value="50">
+            </div>
+            <div class="form-group">
+                <label>Date (yyyy-MM-dd HH:mm:ss)</label>
+                <input type="text" id="reg-date" placeholder="2026-05-20 19:00:00">
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 32px;">
+                <button class="btn btn-outline" style="flex: 1;" onclick="closeRegisterModal()">Cancel</button>
+                <button class="btn btn-primary" style="flex: 1;" onclick="submitRegistration()">Register</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="status-toast"></div>
+
+    <script>
+        let currentConcertId = null;
+        let selectedSeatId = null;
+
+        async function fetchConcerts() {
+            try {
+                const res = await fetch('/api/concerts');
+                const data = await res.json();
+                renderConcerts(data.concerts);
+            } catch (err) {
+                showToast('Failed to load concerts', 'error');
+            }
+        }
+
+        function renderConcerts(concerts) {
+            const container = document.getElementById('concert-container');
+            container.innerHTML = '';
+
+            if (!concerts || concerts.length === 0) {
+                container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 100px; color: var(--text-sub);">No tickets registered yet.</p>';
+                return;
+            }
+
+            concerts.forEach(c => {
+                const card = document.createElement('div');
+                card.className = 'concert-card';
+                card.onclick = () => selectConcert(c);
+                card.innerHTML = `
+                    <div class="concert-info">
+                        <div class="concert-title">${c.title}</div>
+                        <div class="concert-date">📅 ${c.date}</div>
+                        <div class="concert-stats">
+                            <span class="badge badge-success">${c.availableSeats} seats left</span>
+                            <span style="color: var(--primary); font-weight: 700;">View →</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function selectConcert(concert) {
+            currentConcertId = concert.concertId;
+            document.getElementById('current-concert-title').innerText = concert.title;
+            document.getElementById('current-concert-date').innerText = concert.date;
+
+            showSeatView();
+            fetchSeats();
+        }
+
+        async function fetchSeats() {
+            const container = document.getElementById('seat-container');
+            container.innerHTML = 'Loading seats...';
+
+            try {
+                const res = await fetch(`/api/seats?concertId=${currentConcertId}`);
+                const data = await res.json();
+                renderSeats(data.seats);
+            } catch (err) {
+                showToast('Failed to load seats', 'error');
+            }
+        }
+
+        function renderSeats(seats) {
+            const container = document.getElementById('seat-container');
+            container.innerHTML = '';
+
+            seats.forEach(s => {
+                const seat = document.createElement('div');
+                seat.className = `seat ${s.status}`;
+                seat.innerText = s.seatNumber;
+
+                if (s.status === 'AVAILABLE') {
+                    seat.onclick = () => {
+                        selectedSeatId = s.seatId;
+                        document.querySelectorAll('.seat').forEach(el => el.classList.remove('selected'));
+                        seat.classList.add('selected');
+
+                        document.getElementById('selection-info').style.display = 'block';
+                        document.getElementById('no-selection-msg').style.display = 'none';
+                        document.getElementById('selected-seat-num').innerText = s.seatNumber;
+                    };
+                }
+
+                container.appendChild(seat);
+            });
+        }
+
+        async function reserveNow() {
+            if (!selectedSeatId) return;
+
+            try {
+                const res = await fetch('/api/reserve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ seatId: selectedSeatId })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    showToast('Booking Successful!', 'success');
+                    fetchSeats();
+                    document.getElementById('selection-info').style.display = 'none';
+                    document.getElementById('no-selection-msg').style.display = 'block';
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (err) {
+                showToast('Booking failed', 'error');
+            }
+        }
+
+        async function submitRegistration() {
+            const payload = {
+                title: document.getElementById('reg-title').value,
+                seatCount: parseInt(document.getElementById('reg-count').value),
+                date: document.getElementById('reg-date').value
+            };
+
+            try {
+                const res = await fetch('/api/concerts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    showToast('Concert Registered!', 'success');
+                    closeRegisterModal();
+                    fetchConcerts();
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (err) {
+                showToast('Registration failed', 'error');
+            }
+        }
+
+        function showListView() {
+            document.getElementById('list-view').style.display = 'block';
+            document.getElementById('seat-view').style.display = 'none';
+            fetchConcerts();
+        }
+
+        function showSeatView() {
+            document.getElementById('list-view').style.display = 'none';
+            document.getElementById('seat-view').style.display = 'block';
+        }
+
+        function openRegisterModal() { document.getElementById('register-modal').style.display = 'flex'; }
+        function closeRegisterModal() { document.getElementById('register-modal').style.display = 'none'; }
+
+        function showToast(msg, type) {
+            const toast = document.getElementById('status-toast');
+            toast.innerText = msg;
+            toast.style.background = type === 'error' ? '#ef4444' : '#10b981';
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        }
+
+        fetchConcerts();
+    </script>
+</body>
+
+</html>

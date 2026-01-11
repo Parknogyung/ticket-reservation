@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Error</title>
+</head>
+
+<body>
+    <h1>Something went wrong!</h1>
+    <p><strong>Error:</strong> <span th:text="${error}">Error details</span></p>
+
+    <div th:if="${trace}" style="margin-top: 20px;">
+        <h3>Stack Trace:</h3>
+        <pre th:text="${trace}"
+            style="background-color: #f8f9fa; padding: 10px; border: 1px solid #dee2e6; overflow: auto; max-height: 400px;"></pre>
+    </div>
+
+    <a href="/login" style="display: block; margin-top: 20px;">Back to Login</a>
+</body>
+
+</html>

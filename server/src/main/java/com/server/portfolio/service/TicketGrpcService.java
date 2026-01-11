@@ -1,11 +1,8 @@
 package com.server.portfolio.service;
 
-import com.server.portfolio.domain.Reservation;
-import com.server.portfolio.domain.Seat;
-import com.server.portfolio.domain.User;
-import com.server.portfolio.repository.ReservationRepository;
-import com.server.portfolio.repository.SeatRepository;
-import com.server.portfolio.repository.UserRepository;
+import com.server.portfolio.domain.*;
+import com.server.portfolio.repository.*;
+import com.server.portfolio.security.JwtTokenProvider;
 import com.ticket.portfolio.*;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
@@ -13,11 +10,14 @@ import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,52 +31,133 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
+    private final ConcertRepository concertRepository;
+    private final ConcertOptionRepository concertOptionRepository;
 
-    private final RedisTemplate<String, String> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
     private final RedissonClient redissonClient;
     private final PlatformTransactionManager transactionManager;
+    private final JwtTokenProvider jwtTokenProvider;
 
-    // 1. 대기열 토큰 발급
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    // ① 티켓(콘서트) 등록 (Admin용)
     @Override
-    public void issueToken(TokenRequest request, StreamObserver<TokenResponse> responseObserver) {
-        String userId = request.getUserId();
-        String queueKey = "concert_queue:" + request.getConcertId();
+    public void registerConcert(RegisterConcertRequest request,
+            StreamObserver<RegisterConcertResponse> responseObserver) {
+        String title = request.getTitle();
+        int seatCount = request.getSeatCount();
+        String dateStr = request.getConcertDate();
 
-        // Redis Sorted Set에 추가 (Score = 현재 시간)
-        // 먼저 온 사람이 적은 값을 가짐 -> 먼저 나감
-        long timestamp = System.currentTimeMillis();
-        redisTemplate.opsForZSet().add(queueKey, userId, timestamp);
+        log.info("Registering concert: {} with {} seats", title, seatCount);
 
-        // 내 순서 확인 (Rank)
-        Long rank = redisTemplate.opsForZSet().rank(queueKey, userId);
+        try {
+            AtomicLong concertOptionId = new AtomicLong(-1);
+            new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                // 1. 공연 생성
+                Concert concert = new Concert(title);
+                concertRepository.save(concert);
 
-        TokenResponse response = TokenResponse.newBuilder()
-                .setToken(UUID.randomUUID().toString()) // 실제로는 JWT 등을 사용
-                .setWaitPosition(rank != null ? rank : -1)
-                .setCanEnter(rank != null && rank < 2000) // 예: 상위 100명만 입장 가능
-                .build();
+                // 2. 공연 옵션(회차) 생성
+                LocalDateTime concertDate = LocalDateTime.parse(dateStr, DATE_FORMATTER);
+                ConcertOption option = new ConcertOption(concert, concertDate);
+                concertOptionRepository.save(option);
+                concertOptionId.set(option.getId());
 
-        responseObserver.onNext(response);
+                // 3. 좌석 생성
+                java.util.List<com.server.portfolio.domain.Seat> seats = new java.util.ArrayList<>();
+                for (int i = 1; i <= seatCount; i++) {
+                    seats.add(com.server.portfolio.domain.Seat.builder()
+                            .concertOption(option)
+                            .seatNumber(i)
+                            .status(com.server.portfolio.domain.Seat.SeatStatus.AVAILABLE)
+                            .build());
+                }
+                seatRepository.saveAll(seats);
+            });
+
+            responseObserver.onNext(RegisterConcertResponse.newBuilder()
+                    .setSuccess(true)
+                    .setMessage("성공적으로 등록되었습니다.")
+                    .setConcertId(concertOptionId.get())
+                    .build());
+        } catch (Exception e) {
+            log.error("Concert registration failed", e);
+            responseObserver.onNext(RegisterConcertResponse.newBuilder()
+                    .setSuccess(false)
+                    .setMessage("등록 실패: " + e.getMessage())
+                    .build());
+        }
         responseObserver.onCompleted();
     }
 
-    // 2. 좌석 예약 (핵심: 분산 락 적용)
+    // ② 티켓(콘서트) 목록 조회
+    @Override
+    @Transactional(readOnly = true)
+    public void getConcerts(GetConcertsRequest request, StreamObserver<ConcertListResponse> responseObserver) {
+        log.info("Fetching all concerts");
+        try {
+            List<ConcertOption> options = concertOptionRepository.findAll();
+            ConcertListResponse.Builder responseBuilder = ConcertListResponse.newBuilder();
+
+            for (ConcertOption option : options) {
+                // 해당 회차의 남은 좌석 수 계산 (간단히 DB 카운트)
+                // 실제 고사양 환경에선 Redis 캐시 권장
+                long availableCount = seatRepository.findAvailableSeats(option.getId()).size();
+
+                responseBuilder.addConcerts(ConcertInfo.newBuilder()
+                        .setConcertId(option.getId())
+                        .setTitle(option.getConcert().getTitle())
+                        .setConcertDate(option.getConcertDate().format(DATE_FORMATTER))
+                        .setAvailableSeats((int) availableCount)
+                        .build());
+            }
+            responseObserver.onNext(responseBuilder.build());
+        } catch (Exception e) {
+            log.error("Failed to fetch concerts", e);
+        }
+        responseObserver.onCompleted();
+    }
+
+    // ③ 예약 가능한 좌석 조회
+    @Override
+    @Transactional(readOnly = true)
+    public void getAvailableSeats(SeatSearchRequest request, StreamObserver<SeatListResponse> responseObserver) {
+        long concertId = request.getConcertId();
+        log.info("Fetching available seats for concert option: {}", concertId);
+
+        try {
+            List<com.server.portfolio.domain.Seat> seats = seatRepository.findAvailableSeats(concertId);
+
+            SeatListResponse.Builder responseBuilder = SeatListResponse.newBuilder();
+            for (com.server.portfolio.domain.Seat seat : seats) {
+                responseBuilder.addSeats(com.ticket.portfolio.Seat.newBuilder()
+                        .setSeatId(seat.getId())
+                        .setSeatNumber(seat.getSeatNumber())
+                        .setStatus(seat.getStatus().name())
+                        .build());
+            }
+            responseObserver.onNext(responseBuilder.build());
+        } catch (Exception e) {
+            log.error("Failed to fetch seats", e);
+        }
+        responseObserver.onCompleted();
+    }
+
+    // ④ 좌석 예약 요청 (분산 락 적용)
     @Override
     public void reserveSeat(ReservationRequest request, StreamObserver<ReservationResponse> responseObserver) {
         long seatId = request.getSeatId();
         long userId = Long.parseLong(request.getUserId());
         String lockKey = "seat_lock:" + seatId;
 
-        // Redisson 분산 락 획득
         RLock lock = redissonClient.getLock(lockKey);
 
-        // 람다 내부에서 값을 변경하기 위해 Atomic 변수 사용
         AtomicBoolean success = new AtomicBoolean(false);
         AtomicReference<String> message = new AtomicReference<>("");
         AtomicLong reservationId = new AtomicLong(-1);
 
         try {
-            // 락 시도 (최대 10초 대기, 락 획득 후 10초 뒤 자동 해제)
             boolean available = lock.tryLock(10, 10, TimeUnit.SECONDS);
 
             if (!available) {
@@ -84,25 +165,20 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
                 throw new RuntimeException("접속자가 많아 처리가 지연되고 있습니다.");
             }
 
-            // --- [임계 구역: 오직 한 명만 들어옴] ---
-            // 트랜잭션 범위를 락 내부로 제한하여, 락 해제 전에 커밋이 완료되도록 보장함
             new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-                Seat seat = seatRepository.findById(seatId)
+                com.server.portfolio.domain.Seat seat = seatRepository.findById(seatId)
                         .orElseThrow(() -> new IllegalArgumentException("좌석이 존재하지 않습니다."));
 
-                if (seat.getStatus() != Seat.SeatStatus.AVAILABLE) {
+                if (seat.getStatus() != com.server.portfolio.domain.Seat.SeatStatus.AVAILABLE) {
                     message.set("이미 예약된 좌석입니다.");
                     return;
                 }
 
-                // 예약 진행
                 User user = userRepository.findById(userId)
                         .orElseThrow(() -> new IllegalArgumentException("유저가 없습니다."));
 
-                // 상태 변경 (Dirty Checking)
                 seat.reserve();
 
-                // 예약 내역 생성
                 Reservation reservation = Reservation.builder()
                         .user(user)
                         .seat(seat)
@@ -116,7 +192,6 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
                 message.set("예약에 성공했습니다.");
                 reservationId.set(reservation.getId());
             });
-            // ------------------------------------
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -125,7 +200,6 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
             log.error("예약 실패", e);
             message.set(e.getMessage());
         } finally {
-            // 락 해제 (중요: 내가 건 락만 해제)
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
@@ -137,6 +211,97 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
                 .setReservationId(reservationId.get())
                 .build();
 
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    // ⑤ 대기열 토큰 발급
+    @Override
+    public void issueToken(TokenRequest request, StreamObserver<TokenResponse> responseObserver) {
+        String userId = request.getUserId();
+        String queueKey = "concert_queue:" + request.getConcertId();
+
+        long timestamp = System.currentTimeMillis();
+        redisTemplate.opsForZSet().add(queueKey, userId, timestamp);
+
+        Long rank = redisTemplate.opsForZSet().rank(queueKey, userId);
+
+        TokenResponse response = TokenResponse.newBuilder()
+                .setToken(UUID.randomUUID().toString())
+                .setWaitPosition(rank != null ? rank : -1)
+                .setCanEnter(rank != null && rank < 2000)
+                .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    // ⑥ 로그인
+    @Override
+    public void login(com.ticket.portfolio.LoginRequest request,
+            StreamObserver<com.ticket.portfolio.LoginResponse> responseObserver) {
+        String email = request.getEmail();
+        String password = request.getPassword();
+
+        log.info("gRPC login request for email: {}", email);
+
+        com.ticket.portfolio.LoginResponse.Builder responseBuilder = com.ticket.portfolio.LoginResponse.newBuilder();
+
+        try {
+            if ("user1@test.com".equals(email) && "1234".equals(password)) {
+                log.info("Demo user login success: {}", email);
+                // 데모 유저도 DB에서 조회해 ID를 가져오거나 없으면 생성
+                User user = userRepository.findByEmail(email).orElseGet(() -> {
+                    User newUser = User.builder()
+                            .email(email)
+                            .password(password)
+                            .role(User.Role.USER)
+                            .point(0L)
+                            .build();
+                    return userRepository.save(newUser);
+                });
+                sendLoginSuccess(user, responseBuilder, responseObserver);
+                return;
+            }
+
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+
+            if (user.getPassword().equals(password)) {
+                log.info("DB user login success: {}", email);
+                sendLoginSuccess(user, responseBuilder, responseObserver);
+            } else {
+                log.warn("Login failed: password mismatch for {}", email);
+                responseBuilder.setSuccess(false).setMessage("비밀번호가 일치하지 않습니다.");
+                responseObserver.onNext(responseBuilder.build());
+                responseObserver.onCompleted();
+            }
+        } catch (Exception e) {
+            log.error("Login process error: ", e);
+            responseBuilder.setSuccess(false).setMessage("인증 과정에서 오류가 발생했습니다: " + e.getMessage());
+            responseObserver.onNext(responseBuilder.build());
+            responseObserver.onCompleted();
+        }
+    }
+
+    private void sendLoginSuccess(User user, com.ticket.portfolio.LoginResponse.Builder responseBuilder,
+            StreamObserver<com.ticket.portfolio.LoginResponse> responseObserver) {
+        String email = user.getEmail();
+        org.springframework.security.core.Authentication auth = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                email, null, java.util.Collections.singletonList(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER")));
+
+        String accessToken = jwtTokenProvider.createAccessToken(auth);
+        String refreshToken = jwtTokenProvider.createRefreshToken(auth);
+
+        redisTemplate.opsForValue().set("RT:" + email, refreshToken, 7, TimeUnit.DAYS);
+
+        com.ticket.portfolio.LoginResponse response = responseBuilder.setSuccess(true)
+                .setAccessToken(accessToken)
+                .setRefreshToken(refreshToken)
+                .setUserId(user.getId())
+                .setMessage("로그인에 성공했습니다.")
+                .build();
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
