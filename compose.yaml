@@ -1,1 +1,14 @@
-services: { }
+services:
+  auth-service:
+    build: ./auth
+    container_name: auth-service
+    ports:
+      - "8082:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    networks:
+      - ticket-network
+
+networks:
+  ticket-network:
+    driver: bridge

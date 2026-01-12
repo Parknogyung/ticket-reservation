@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+
 <head>
     <meta charset="UTF-8">
     <title>Login</title>
 </head>
+
 <body>
     <h1>로그인</h1>
     <div th:if="${param.error}">
@@ -14,9 +16,20 @@
     </div>
 
     <form th:action="@{/login}" method="post">
-        <div><input type="text" name="username" placeholder="Email (user1@test.com)" required/></div>
-        <div><input type="password" name="password" placeholder="Password (1234)" required/></div>
+        <div><input type="text" name="username" placeholder="Email (user1@test.com)" required /></div>
+        <div><input type="password" name="password" placeholder="Password (1234)" required /></div>
         <button type="submit">로그인</button>
     </form>
+
+    <div style="margin-top: 20px;">
+        <h3>Social Login</h3>
+        <a href="http://localhost:8082/oauth2/authorization/google">
+            <button style="background-color: #dd4b39; color: white;">Login with Google</button>
+        </a>
+        <a href="http://localhost:8082/oauth2/authorization/kakao">
+            <button style="background-color: #FEE500; color: #000000;">Login with Kakao</button>
+        </a>
+    </div>
 </body>
+
 </html>
