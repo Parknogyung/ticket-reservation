@@ -447,10 +447,10 @@
                 const result = await res.json();
 
                 if (result.success) {
-                    showToast('Booking Successful!', 'success');
-                    fetchSeats();
-                    document.getElementById('selection-info').style.display = 'none';
-                    document.getElementById('no-selection-msg').style.display = 'block';
+                    showToast('Booking Successful! Redirecting to payment...', 'success');
+                    setTimeout(() => {
+                        window.location.href = `/payment?reservationId=${result.reservationId}&seatId=${selectedSeatId}`;
+                    }, 1000);
                 } else {
                     showToast(result.message, 'error');
                 }

@@ -9,6 +9,28 @@ services:
     networks:
       - ticket-network
 
+  ticket-server:
+    build: ./server
+    container_name: ticket-server
+    ports:
+      - "8081:8080"
+      - "9090:9090"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    networks:
+      - ticket-network
+
+  payment-service:
+    build: ./payment
+    container_name: payment-service
+    ports:
+      - "8084:8084"
+      - "9091:9091"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    networks:
+      - ticket-network
+
 networks:
   ticket-network:
     driver: bridge

@@ -49,4 +49,11 @@ public class Seat {
         }
         this.status = SeatStatus.RESERVED;
     }
+
+    public void confirm() {
+        if (this.status != SeatStatus.RESERVED) {
+            throw new IllegalStateException("예약된 좌석만 결제할 수 있습니다.");
+        }
+        this.status = SeatStatus.SOLD;
+    }
 }

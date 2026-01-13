@@ -305,4 +305,51 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
+
+    @Override
+    public void completeReservation(CompleteReservationRequest request,
+            StreamObserver<CompleteReservationResponse> responseObserver) {
+        long reservationId = request.getReservationId();
+        String userId = request.getUserId();
+        String paymentId = request.getPaymentId();
+
+        log.info("Completing reservation: reservationId={}, userId={}, paymentId={}", reservationId, userId, paymentId);
+
+        AtomicBoolean success = new AtomicBoolean(false);
+        AtomicReference<String> message = new AtomicReference<>("");
+
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                Reservation reservation = reservationRepository.findById(reservationId)
+                        .orElseThrow(() -> new IllegalArgumentException("예약 내역이 없습니다."));
+
+                // User verification (Optional but recommended)
+                // if (!reservation.getUser().getId().equals(Long.parseLong(userId))) ...
+
+                if (reservation.getStatus() != Reservation.ReservationStatus.PENDING) {
+                    throw new IllegalStateException("입금 대기 중인 예약이 아닙니다.");
+                }
+
+                // 1. Confirm Reservation
+                reservation.confirm();
+
+                // 2. Mark Seat as SOLD
+                reservation.getSeat().confirm();
+
+                success.set(true);
+                message.set("예약이 확정되었습니다.");
+            });
+        } catch (Exception e) {
+            log.error("Failed to complete reservation", e);
+            message.set(e.getMessage());
+        }
+
+        CompleteReservationResponse response = CompleteReservationResponse.newBuilder()
+                .setSuccess(success.get())
+                .setMessage(message.get())
+                .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
 }
