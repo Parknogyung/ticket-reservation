@@ -9,10 +9,28 @@ import net.devh.boot.grpc.server.service.GrpcService;
 
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 @Slf4j
 @GrpcService
 @RequiredArgsConstructor
 public class PaymentGrpcService extends PaymentServiceGrpc.PaymentServiceImplBase {
+
+    @Value("${portone.channel-key}")
+    private String channelKey;
+
+    @Value("${portone.mid}")
+    private String mid;
+
+    @Value("${portone.sign-key}")
+    private String signKey;
+
+    @Value("${portone.iniapi-key}")
+    private String iniApiKey;
+
+    @Value("${portone.iniapi-iv}")
+    private String iniApiIv;
 
     @GrpcClient("ticket-server")
     private TicketServiceGrpc.TicketServiceBlockingStub ticketStub;
@@ -25,12 +43,26 @@ public class PaymentGrpcService extends PaymentServiceGrpc.PaymentServiceImplBas
 
         log.info("Processing payment: userId={}, reservationId={}, amount={}", userId, reservationId, amount);
 
-        // 1. Mock Payment Gateway Logic
-        // In reality, we would call an external PG API here.
+        // 1. Verify Payment with PortOne (Mocking the API call using provided keys)
+        // In a real production environment, you would use a RestTemplate or WebClient
+        // to call PortOne/KG Inicis API.
+        log.info("Verifying payment - ChannelKey: {}, MID: {}, PaymentId: {}", channelKey, mid, request.getPaymentId());
+
+        // Simulating verification logic
         boolean paymentSuccess = true;
         String transactionId = UUID.randomUUID().toString();
 
         if (amount <= 0) {
+            paymentSuccess = false;
+        }
+
+        // TODO: Implement actual API call using iniApiKey and iniApiIv if needed for
+        // server-side verification.
+        // For PortOne V2, typically we verify using the paymentId and secret.
+        // Since we have specific INIAPI keys, this might be a direct PG integration or
+        // specific hybrid setup.
+
+        if (request.getPaymentId() == null || request.getPaymentId().isEmpty()) {
             paymentSuccess = false;
         }
 

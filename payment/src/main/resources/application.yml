@@ -12,3 +12,10 @@ grpc:
     ticket-server:
       address: static://localhost:9090
       negotiation-type: plaintext
+
+portone:
+  channel-key: channel-key-9c589663-7b58-43d7-8d08-eb2bf433b124
+  mid: INIpayTest
+  sign-key: SU5JTElURV9UUklQTEVERVNfS0VZU1RS
+  iniapi-key: ItEQKi3rY7uvDS8l
+  iniapi-iv: HYb3yQ4f65QL89==

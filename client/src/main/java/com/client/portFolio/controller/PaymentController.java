@@ -27,7 +27,7 @@ public class PaymentController {
         // In a real app, verify reservation belongs to user
         model.addAttribute("reservationId", reservationId);
         model.addAttribute("seatId", seatId);
-        model.addAttribute("amount", 50000); // Fixed price for demo
+        model.addAttribute("amount", 1000); // Fixed price for demo
         return "payment";
     }
 

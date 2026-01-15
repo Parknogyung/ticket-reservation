@@ -69,51 +69,57 @@
     </div>
 
     <!-- PortOne V2 SDK -->
-    <!-- PortOne V1 SDK (Classic) -->
-    <script src="https://cdn.iamport.kr/v1/iamport.js"></script>
+    <!-- PortOne V2 SDK -->
+    <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
     <script th:inline="javascript">
-        function requestPayment() {
+        async function requestPayment() {
             const reservationId = [[${ reservationId }]];
             const amount = [[${ amount }]];
 
-            const IMP = window.IMP;
-            IMP.init("imp61664426"); // [IMPORTANT] Replace with your "User Code" (식별코드) from Admin Console
-
-            IMP.request_pay({
-                pg: "html5_inicis", // PG Provider (KG Inicis)
-                pay_method: "card",
-                merchant_uid: `payment-${crypto.randomUUID()}`, // Unique Transaction ID
-                name: `Concert Ticket (Res: ${reservationId})`,
-                amount: amount,
-                buyer_email: "test@example.com",
-                buyer_name: "Test User",
-                buyer_tel: "010-1234-5678",
-            }, function (rsp) { // Callback
-                if (rsp.success) {
-                    // Verify on server
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = '/payment/process';
-
-                    const fields = {
-                        reservationId: reservationId,
-                        amount: amount,
-                        paymentId: rsp.imp_uid // Use imp_uid for verification
-                    };
-
-                    for (const key in fields) {
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = key;
-                        input.value = fields[key];
-                        form.appendChild(input);
-                    }
-                    document.body.appendChild(form);
-                    form.submit();
-                } else {
-                    alert(`Payment Failed: ${rsp.error_msg}`);
+            const response = await PortOne.requestPayment({
+                storeId: "store-e24364c6-6a4f-4c10-becb-9d2151f75361",
+                channelKey: "channel-key-9c589663-7b58-43d7-8d08-eb2bf433b124",
+                paymentId: `payment-${new Date().getTime()}`,
+                orderName: `Concert Ticket (Res: ${reservationId})`,
+                totalAmount: amount,
+                currency: "CURRENCY_KRW",
+                payMethod: "CARD",
+                customer: {
+                    fullName: "Test User",
+                    phoneNumber: "010-1234-5678",
+                    email: "test@example.com",
+                },
+                windowType: {
+                    pc: "IFRAME",
+                    mobile: "POPUP",
                 }
             });
+
+            if (response.code != null) {
+                // Error
+                return alert(`Payment Failed: ${response.message}`);
+            }
+
+            // Verify on server
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/payment/process';
+
+            const fields = {
+                reservationId: reservationId,
+                amount: amount,
+                paymentId: response.paymentId
+            };
+
+            for (const key in fields) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = fields[key];
+                form.appendChild(input);
+            }
+            document.body.appendChild(form);
+            form.submit();
         }
     </script>
 </body>
