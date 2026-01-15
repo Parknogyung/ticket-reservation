@@ -43,9 +43,11 @@ public class DashboardApiController {
         String title = (String) request.get("title");
         int seatCount = (Integer) request.get("seatCount");
         String date = (String) request.get("date");
+        // Handle number/string price input
+        long price = Long.parseLong(request.getOrDefault("price", "0").toString());
 
-        log.info("Registering new concert: {}", title);
-        RegisterConcertResponse response = ticketServiceClient.registerConcert(title, seatCount, date);
+        log.info("Registering new concert: {} with price {}", title, price);
+        RegisterConcertResponse response = ticketServiceClient.registerConcert(title, seatCount, date, price);
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", response.getSuccess());
@@ -107,6 +109,38 @@ public class DashboardApiController {
         if (response.getSuccess()) {
             result.put("reservationId", response.getReservationId());
         }
+        return result;
+    }
+
+    @GetMapping("/my-reservations")
+    public Map<String, Object> getMyReservations() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof com.client.portFolio.security.UserPrincipal)) {
+            Map<String, Object> errorResult = new HashMap<>();
+            errorResult.put("error", "인증 정보가 유효하지 않습니다.");
+            return errorResult;
+        }
+
+        com.client.portFolio.security.UserPrincipal principal = (com.client.portFolio.security.UserPrincipal) auth
+                .getPrincipal();
+        String userId = String.valueOf(principal.getUserId());
+
+        log.info("Fetching my reservations for userId: {}", userId);
+        MyReservationListResponse response = ticketServiceClient.getMyReservations(userId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("reservations", response.getReservationsList().stream().map(r -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("reservationId", r.getReservationId());
+            map.put("concertTitle", r.getConcertTitle());
+            map.put("concertDate", r.getConcertDate());
+            map.put("seatNumber", r.getSeatNumber());
+            map.put("status", r.getStatus());
+            map.put("amount", r.getAmount());
+            map.put("paymentId", r.getPaymentId());
+            return map;
+        }).collect(Collectors.toList()));
+
         return result;
     }
 }

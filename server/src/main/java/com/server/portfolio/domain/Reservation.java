@@ -30,14 +30,17 @@ public class Reservation {
     @Column(nullable = false)
     private LocalDateTime reservationTime;
 
+    @Column(name = "payment_id")
+    private String paymentId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ReservationStatus status;
 
     public enum ReservationStatus {
-        PENDING,   // 예약 요청 중 (임시 점유)
-        SUCCESS,   // 결제 완료 (최종 확정)
-        CANCELLED  // 취소됨 (시간 초과 등)
+        PENDING, // 예약 요청 중 (임시 점유)
+        SUCCESS, // 결제 완료 (최종 확정)
+        CANCELLED // 취소됨 (시간 초과 등)
     }
 
     @Builder
@@ -49,8 +52,9 @@ public class Reservation {
     }
 
     // 비즈니스 로직 (상태 변경)
-    public void confirm() {
+    public void confirm(String paymentId) {
         this.status = ReservationStatus.SUCCESS;
+        this.paymentId = paymentId;
     }
 
     public void cancel() {

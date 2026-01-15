@@ -56,4 +56,8 @@ public class Seat {
         }
         this.status = SeatStatus.SOLD;
     }
+
+    public void cancel() {
+        this.status = SeatStatus.AVAILABLE;
+    }
 }

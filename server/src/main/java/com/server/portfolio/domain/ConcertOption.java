@@ -26,9 +26,13 @@ public class ConcertOption {
     @Column(nullable = false)
     private LocalDateTime concertDate; // 공연 일시
 
+    @Column(nullable = false)
+    private Long price;
+
     @Builder
-    public ConcertOption(Concert concert, LocalDateTime concertDate) {
+    public ConcertOption(Concert concert, LocalDateTime concertDate, Long price) {
         this.concert = concert;
         this.concertDate = concertDate;
+        this.price = price != null ? price : 0L;
     }
 }

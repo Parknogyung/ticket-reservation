@@ -31,10 +31,18 @@ service TicketService {
   rpc GetConcerts (GetConcertsRequest) returns (ConcertListResponse);
   // ⑦ 예약 확정 (결제 완료 후 호출)
   rpc CompleteReservation (CompleteReservationRequest) returns (CompleteReservationResponse);
+  // ⑧ 예약 취소/환불 (PaymentService에서 호출)
+  rpc RefundReservation (RefundReservationRequest) returns (RefundReservationResponse);
+  // ⑨ 내 예약 목록 조회
+  rpc GetMyReservations (GetMyReservationsRequest) returns (MyReservationListResponse);
+  
+  // ⑩ 예약 상세 조회 (결제 화면용)
+  rpc GetReservationDetails (GetReservationDetailsRequest) returns (GetReservationDetailsResponse);
 }
 
 service PaymentService {
   rpc ProcessPayment (PaymentRequest) returns (PaymentResponse);
+  rpc CancelPayment (CancelPaymentRequest) returns (CancelPaymentResponse);
 }
 
 // ------------------------------------------------------------
@@ -102,6 +110,7 @@ message RegisterConcertRequest {
   string title = 1;
   int32 seat_count = 2;
   string concert_date = 3; // yyyy-MM-dd HH:mm:ss
+  int64 price = 4;
 }
 
 message RegisterConcertResponse {
@@ -119,6 +128,7 @@ message ConcertInfo {
   string title = 2;
   string concert_date = 3;
   int32 available_seats = 4;
+  int64 price = 5;
 }
 
 message ConcertListResponse {
@@ -149,4 +159,56 @@ message PaymentResponse {
   bool success = 1;
   string message = 2;
   string transaction_id = 3;
+}
+
+message CancelPaymentRequest {
+  string payment_id = 1;
+  string reason = 2; // e.g. "Customer requested", "System error"
+  int64 reservation_id = 3;
+}
+
+message CancelPaymentResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// --- ⑨ 예약 취소/환불 관련 메시지 ---
+// TicketService가 PaymentService로부터 호출받아 예약 상태를 취소로 변경
+message RefundReservationRequest {
+  int64 reservation_id = 1;
+}
+
+message RefundReservationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// --- ⑩ 내 예약 목록 조회 관련 메시지 ---
+message GetMyReservationsRequest {
+  string user_id = 1;
+}
+
+message MyReservationInfo {
+  int64 reservation_id = 1;
+  string concert_title = 2;
+  string concert_date = 3;
+  int32 seat_number = 4;
+  string status = 5; // PENDING, CONFIRMED, CANCELLED
+  int64 amount = 6;
+  string payment_id = 7;
+}
+
+message MyReservationListResponse {
+  repeated MyReservationInfo reservations = 1;
+}
+
+// --- ⑪ 예약 상세 조회 관련 메시지 ---
+message GetReservationDetailsRequest {
+  int64 reservation_id = 1;
+}
+
+message GetReservationDetailsResponse {
+  string title = 1;
+  int64 amount = 2; // price
+  int64 reservation_id = 3;
 }

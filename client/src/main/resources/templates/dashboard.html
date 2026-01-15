@@ -272,6 +272,10 @@
             z-index: 2000;
         }
     </style>
+    </style>
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </head>
 
 <body>
@@ -282,6 +286,8 @@
             <form th:action="@{/logout}" method="post">
                 <button type="submit" class="btn btn-outline" style="padding: 6px 16px;">Logout</button>
             </form>
+            <button class="btn btn-primary" style="padding: 6px 16px;" onclick="showReservationView()">My
+                Reservations</button>
         </div>
     </nav>
 
@@ -322,6 +328,32 @@
         </div>
     </div>
 
+    <!-- Reservation List View -->
+    <div class="container" id="reservation-view" style="display: none;">
+        <div class="back-btn" onclick="showListView()">← Back to list</div>
+        <div class="view-header">
+            <h2 class="view-title">My Reservations</h2>
+        </div>
+        <div class="booking-card">
+            <div style="background: white; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #e2e8f0; text-align: left;">
+                            <th style="padding: 12px;">Concert</th>
+                            <th style="padding: 12px;">Date</th>
+                            <th style="padding: 12px;">Seat</th>
+                            <th style="padding: 12px;">Status</th>
+                            <th style="padding: 12px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reservation-table-body">
+                        <!-- Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Registration Modal -->
     <div id="register-modal" class="modal">
         <div class="modal-content">
@@ -335,8 +367,12 @@
                 <input type="number" id="reg-count" value="50">
             </div>
             <div class="form-group">
+                <label>Ticket Price (KRW)</label>
+                <input type="number" id="reg-price" placeholder="e.g. 50000">
+            </div>
+            <div class="form-group">
                 <label>Date (yyyy-MM-dd HH:mm:ss)</label>
-                <input type="text" id="reg-date" placeholder="2026-05-20 19:00:00">
+                <input type="text" id="reg-date" placeholder="Select Date and Time">
             </div>
             <div style="display: flex; gap: 12px; margin-top: 32px;">
                 <button class="btn btn-outline" style="flex: 1;" onclick="closeRegisterModal()">Cancel</button>
@@ -463,6 +499,7 @@
             const payload = {
                 title: document.getElementById('reg-title').value,
                 seatCount: parseInt(document.getElementById('reg-count').value),
+                price: parseInt(document.getElementById('reg-price').value),
                 date: document.getElementById('reg-date').value
             };
 
@@ -489,15 +526,109 @@
         function showListView() {
             document.getElementById('list-view').style.display = 'block';
             document.getElementById('seat-view').style.display = 'none';
+            document.getElementById('reservation-view').style.display = 'none';
             fetchConcerts();
         }
 
         function showSeatView() {
             document.getElementById('list-view').style.display = 'none';
             document.getElementById('seat-view').style.display = 'block';
+            document.getElementById('reservation-view').style.display = 'none';
         }
 
-        function openRegisterModal() { document.getElementById('register-modal').style.display = 'flex'; }
+        function showReservationView() {
+            document.getElementById('list-view').style.display = 'none';
+            document.getElementById('seat-view').style.display = 'none';
+            document.getElementById('reservation-view').style.display = 'block';
+            fetchReservations();
+        }
+
+        async function fetchReservations() {
+            const tbody = document.getElementById('reservation-table-body');
+            tbody.innerHTML = '<tr><td colspan="5" style="padding: 20px; text-align: center;">Loading...</td></tr>';
+
+            try {
+                const res = await fetch('/api/my-reservations');
+                const data = await res.json();
+                renderReservations(data.reservations);
+            } catch (err) {
+                showToast('Failed to load reservations', 'error');
+            }
+        }
+
+        function renderReservations(list) {
+            const tbody = document.getElementById('reservation-table-body');
+            tbody.innerHTML = '';
+
+            if (!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="padding: 20px; text-align: center;">No reservations found.</td></tr>';
+                return;
+            }
+
+            list.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid #e2e8f0';
+
+                let actionBtn = '-';
+                // Only allow cancel if SUCCESS (Confirmed)
+                if (r.status === 'SUCCESS' || r.status === 'CONFIRMED' || r.status === 'PENDING') {
+                    // Even PENDING can be cancelled (RefundReservation handles it check)
+                    // But PENDING might not have paymentId.
+                    // The logic requires paymentId only if it was paid.
+                    // If pending, maybe we just cancel reservation?
+                    // My implemented cancelPayment requires paymentId?
+                    // Let's assume passed paymentId or empty string.
+                    const payId = r.paymentId || '';
+                    actionBtn = `<button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.8rem; color: #ef4444; border-color: #ef4444;" onclick="cancelReservation('${payId}', ${r.reservationId})">Cancel</button>`;
+                } else if (r.status === 'CANCELLED') {
+                    actionBtn = '<span style="color: #94a3b8;">Cancelled</span>';
+                }
+
+                tr.innerHTML = `
+                    <td style="padding: 12px;">${r.concertTitle}</td>
+                    <td style="padding: 12px;">${r.concertDate}</td>
+                    <td style="padding: 12px;">#${r.seatNumber}</td>
+                    <td style="padding: 12px;">${r.status}</td>
+                    <td style="padding: 12px;">${actionBtn}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function cancelReservation(paymentId, reservationId) {
+            if (!confirm("Are you sure you want to cancel?")) return;
+
+            try {
+                const res = await fetch('/payment/cancel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        'paymentId': paymentId,
+                        'reservationId': reservationId,
+                        'reason': 'User requested cancellation'
+                    })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showToast('Cancellation Successful', 'success');
+                    fetchReservations();
+                } else {
+                    showToast(result.message || 'Failed', 'error');
+                }
+            } catch (err) {
+                showToast('Error cancelling', 'error');
+            }
+        }
+
+        function openRegisterModal() {
+            document.getElementById('register-modal').style.display = 'flex';
+            flatpickr("#reg-date", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i:S",
+                minDate: "today",
+                time_24hr: true
+            });
+        }
         function closeRegisterModal() { document.getElementById('register-modal').style.display = 'none'; }
 
         function showToast(msg, type) {

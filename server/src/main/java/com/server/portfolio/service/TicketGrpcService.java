@@ -60,7 +60,8 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
 
                 // 2. 공연 옵션(회차) 생성
                 LocalDateTime concertDate = LocalDateTime.parse(dateStr, DATE_FORMATTER);
-                ConcertOption option = new ConcertOption(concert, concertDate);
+                long price = request.getPrice();
+                ConcertOption option = new ConcertOption(concert, concertDate, price);
                 concertOptionRepository.save(option);
                 concertOptionId.set(option.getId());
 
@@ -110,6 +111,7 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
                         .setTitle(option.getConcert().getTitle())
                         .setConcertDate(option.getConcertDate().format(DATE_FORMATTER))
                         .setAvailableSeats((int) availableCount)
+                        .setPrice(option.getPrice())
                         .build());
             }
             responseObserver.onNext(responseBuilder.build());
@@ -331,7 +333,7 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
                 }
 
                 // 1. Confirm Reservation
-                reservation.confirm();
+                reservation.confirm(paymentId);
 
                 // 2. Mark Seat as SOLD
                 reservation.getSeat().confirm();
@@ -350,6 +352,118 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
                 .build();
 
         responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    // ⑧ 예약 취소/환불
+    @Override
+    public void refundReservation(RefundReservationRequest request,
+            StreamObserver<RefundReservationResponse> responseObserver) {
+        long reservationId = request.getReservationId();
+        log.info("Refunding reservation: {}", reservationId);
+
+        AtomicBoolean success = new AtomicBoolean(false);
+        AtomicReference<String> message = new AtomicReference<>("");
+
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                Reservation reservation = reservationRepository.findById(reservationId)
+                        .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
+
+                // Already cancelled check?
+                if (reservation.getStatus() == Reservation.ReservationStatus.CANCELLED) {
+                    message.set("Already cancelled");
+                    return;
+                }
+
+                reservation.cancel();
+                reservation.getSeat().cancel();
+
+                // If you are using explicit save, do it, but dirty checking handles it.
+                // reservationRepository.save(reservation);
+
+                success.set(true);
+                message.set("Reservation cancelled and seat freed.");
+            });
+        } catch (Exception e) {
+            log.error("Refund failed", e);
+            message.set("Error: " + e.getMessage());
+        }
+
+        RefundReservationResponse response = RefundReservationResponse.newBuilder()
+                .setSuccess(success.get())
+                .setMessage(message.get())
+                .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    // ⑨ 내 예약 목록 조회
+    @Override
+    @Transactional(readOnly = true)
+    public void getMyReservations(GetMyReservationsRequest request,
+            StreamObserver<MyReservationListResponse> responseObserver) {
+        String userId = request.getUserId();
+        log.info("Fetching reservations for user: {}", userId);
+
+        try {
+            // Assuming userId is Long parsable
+            List<Reservation> reservations = reservationRepository.findByUserId(Long.parseLong(userId));
+
+            MyReservationListResponse.Builder builder = MyReservationListResponse.newBuilder();
+            for (Reservation r : reservations) {
+                // Only show reservations that have a paymentId (Successfully Paid)
+                if (r.getPaymentId() == null || r.getPaymentId().isEmpty()) {
+                    continue;
+                }
+
+                builder.addReservations(MyReservationInfo.newBuilder()
+                        .setReservationId(r.getId())
+                        .setConcertTitle(r.getSeat().getConcertOption().getConcert().getTitle())
+                        .setConcertDate(r.getSeat().getConcertOption().getConcertDate().format(DATE_FORMATTER))
+                        .setSeatNumber(r.getSeat().getSeatNumber())
+                        .setStatus(r.getStatus().name())
+                        .setAmount(r.getSeat().getConcertOption().getPrice())
+                        .setPaymentId(r.getPaymentId())
+                        .build());
+            }
+
+            responseObserver.onNext(builder.build());
+        } catch (Exception e) {
+            log.error("Failed to fetch my reservations", e);
+            // Return empty or error? gRPC usually just returns partial or throws exception.
+            // Returning empty list is safer here.
+            responseObserver.onNext(MyReservationListResponse.newBuilder().build());
+        }
+        responseObserver.onCompleted();
+    }
+
+    // ⑩ 예약 상세 조회 (결제 화면용)
+    @Override
+    @Transactional(readOnly = true)
+    public void getReservationDetails(GetReservationDetailsRequest request,
+            StreamObserver<GetReservationDetailsResponse> responseObserver) {
+        long reservationId = request.getReservationId();
+
+        try {
+            Reservation reservation = reservationRepository.findById(reservationId)
+                    .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
+
+            String title = reservation.getSeat().getConcertOption().getConcert().getTitle();
+            long price = reservation.getSeat().getConcertOption().getPrice();
+
+            GetReservationDetailsResponse response = GetReservationDetailsResponse.newBuilder()
+                    .setReservationId(reservationId)
+                    .setTitle(title)
+                    .setAmount(price)
+                    .build();
+
+            responseObserver.onNext(response);
+        } catch (Exception e) {
+            log.error("Failed to fetch reservation details", e);
+            responseObserver.onError(e);
+        }
         responseObserver.onCompleted();
     }
 }

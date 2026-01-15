@@ -16,11 +16,12 @@ public class TicketServiceClient {
         return ticketStub.getConcerts(GetConcertsRequest.newBuilder().build());
     }
 
-    public RegisterConcertResponse registerConcert(String title, int seatCount, String concertDate) {
+    public RegisterConcertResponse registerConcert(String title, int seatCount, String concertDate, long price) {
         RegisterConcertRequest request = RegisterConcertRequest.newBuilder()
                 .setTitle(title)
                 .setSeatCount(seatCount)
                 .setConcertDate(concertDate)
+                .setPrice(price)
                 .build();
         return ticketStub.registerConcert(request);
     }
@@ -56,5 +57,19 @@ public class TicketServiceClient {
                 .build();
 
         return stubWithAuth.reserveSeat(request);
+    }
+
+    public MyReservationListResponse getMyReservations(String userId) {
+        GetMyReservationsRequest request = GetMyReservationsRequest.newBuilder()
+                .setUserId(userId)
+                .build();
+        return ticketStub.getMyReservations(request);
+    }
+
+    public GetReservationDetailsResponse getReservationDetails(long reservationId) {
+        GetReservationDetailsRequest request = GetReservationDetailsRequest.newBuilder()
+                .setReservationId(reservationId)
+                .build();
+        return ticketStub.getReservationDetails(request);
     }
 }
