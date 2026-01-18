@@ -146,53 +146,62 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
         responseObserver.onCompleted();
     }
 
-    // ④ 좌석 예약 요청 (분산 락 적용)
+    // ④ 좌석 예약 요청 (분산 락 적용 - 다중 좌석)
     @Override
     public void reserveSeat(ReservationRequest request, StreamObserver<ReservationResponse> responseObserver) {
-        long seatId = request.getSeatId();
+        List<Long> seatIds = request.getSeatIdsList();
         long userId = Long.parseLong(request.getUserId());
-        String lockKey = "seat_lock:" + seatId;
 
-        RLock lock = redissonClient.getLock(lockKey);
+        List<Long> lockedSeatIds = new java.util.ArrayList<>();
+        List<RLock> locks = new java.util.ArrayList<>();
 
         AtomicBoolean success = new AtomicBoolean(false);
         AtomicReference<String> message = new AtomicReference<>("");
-        AtomicLong reservationId = new AtomicLong(-1);
+        List<Long> reservationIds = new java.util.ArrayList<>();
 
         try {
-            boolean available = lock.tryLock(10, 10, TimeUnit.SECONDS);
+            // 1. Acquire locks for all seats (Sort to prevent deadlock if needed, simple
+            // loop here)
+            // Ideally use MultiLock, but let's loop for simplicity in demo
+            for (Long seatId : seatIds) {
+                String lockKey = "seat_lock:" + seatId;
+                RLock lock = redissonClient.getLock(lockKey);
 
-            if (!available) {
-                log.warn("락 획득 실패: seatId={}, userId={}", seatId, userId);
-                throw new RuntimeException("접속자가 많아 처리가 지연되고 있습니다.");
+                boolean available = lock.tryLock(5, 5, TimeUnit.SECONDS);
+                if (!available) {
+                    throw new RuntimeException("좌석 " + seatId + " 예약 처리 중입니다.");
+                }
+                locks.add(lock);
+                lockedSeatIds.add(seatId);
             }
 
             new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-                com.server.portfolio.domain.Seat seat = seatRepository.findById(seatId)
-                        .orElseThrow(() -> new IllegalArgumentException("좌석이 존재하지 않습니다."));
-
-                if (seat.getStatus() != com.server.portfolio.domain.Seat.SeatStatus.AVAILABLE) {
-                    message.set("이미 예약된 좌석입니다.");
-                    return;
-                }
-
                 User user = userRepository.findById(userId)
                         .orElseThrow(() -> new IllegalArgumentException("유저가 없습니다."));
 
-                seat.reserve();
+                for (Long seatId : seatIds) {
+                    com.server.portfolio.domain.Seat seat = seatRepository.findById(seatId)
+                            .orElseThrow(() -> new IllegalArgumentException("좌석 " + seatId + "이(가) 존재하지 않습니다."));
 
-                Reservation reservation = Reservation.builder()
-                        .user(user)
-                        .seat(seat)
-                        .reservationTime(LocalDateTime.now())
-                        .status(Reservation.ReservationStatus.PENDING)
-                        .build();
+                    if (seat.getStatus() != com.server.portfolio.domain.Seat.SeatStatus.AVAILABLE) {
+                        throw new IllegalStateException("좌석 " + seatId + "은(는) 이미 예약되었습니다.");
+                    }
 
-                reservationRepository.save(reservation);
+                    seat.reserve();
+
+                    Reservation reservation = Reservation.builder()
+                            .user(user)
+                            .seat(seat)
+                            .reservationTime(LocalDateTime.now())
+                            .status(Reservation.ReservationStatus.PENDING)
+                            .build();
+
+                    reservationRepository.save(reservation);
+                    reservationIds.add(reservation.getId());
+                }
 
                 success.set(true);
-                message.set("예약에 성공했습니다.");
-                reservationId.set(reservation.getId());
+                message.set(seatIds.size() + "개의 좌석 예약에 성공했습니다.");
             });
 
         } catch (InterruptedException e) {
@@ -201,16 +210,21 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
         } catch (Exception e) {
             log.error("예약 실패", e);
             message.set(e.getMessage());
+            // Rollback is automatic in transaction, but need to clear reservationIds list
+            // if failed halfway
+            reservationIds.clear(); // Respond with empty list
         } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
+            for (RLock lock : locks) {
+                if (lock.isHeldByCurrentThread()) {
+                    lock.unlock();
+                }
             }
         }
 
         ReservationResponse response = ReservationResponse.newBuilder()
                 .setSuccess(success.get())
                 .setMessage(message.get())
-                .setReservationId(reservationId.get())
+                .addAllReservationIds(reservationIds)
                 .build();
 
         responseObserver.onNext(response);
@@ -311,35 +325,40 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
     @Override
     public void completeReservation(CompleteReservationRequest request,
             StreamObserver<CompleteReservationResponse> responseObserver) {
-        long reservationId = request.getReservationId();
+        List<Long> reservationIds = request.getReservationIdsList();
         String userId = request.getUserId();
         String paymentId = request.getPaymentId();
 
-        log.info("Completing reservation: reservationId={}, userId={}, paymentId={}", reservationId, userId, paymentId);
+        log.info("Completing reservations: count={}, paymentId={}", reservationIds.size(), paymentId);
 
         AtomicBoolean success = new AtomicBoolean(false);
         AtomicReference<String> message = new AtomicReference<>("");
 
         try {
             new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-                Reservation reservation = reservationRepository.findById(reservationId)
-                        .orElseThrow(() -> new IllegalArgumentException("예약 내역이 없습니다."));
+                for (Long rId : reservationIds) {
+                    Reservation reservation = reservationRepository.findById(rId)
+                            .orElseThrow(() -> new IllegalArgumentException("예약 " + rId + "이(가) 존재하지 않습니다."));
 
-                // User verification (Optional but recommended)
-                // if (!reservation.getUser().getId().equals(Long.parseLong(userId))) ...
+                    if (reservation.getStatus() != Reservation.ReservationStatus.PENDING) {
+                        // Skip already confirmed or silently ignore?
+                        // Check if already paid by same paymentId?
+                        if (reservation.getStatus() == Reservation.ReservationStatus.SUCCESS
+                                && paymentId.equals(reservation.getPaymentId())) {
+                            continue;
+                        }
+                        throw new IllegalStateException("예약 " + rId + "은(는) 입금 대기 중이 아닙니다.");
+                    }
 
-                if (reservation.getStatus() != Reservation.ReservationStatus.PENDING) {
-                    throw new IllegalStateException("입금 대기 중인 예약이 아닙니다.");
+                    // 1. Confirm Reservation
+                    reservation.confirm(paymentId);
+
+                    // 2. Mark Seat as SOLD
+                    reservation.getSeat().confirm();
                 }
 
-                // 1. Confirm Reservation
-                reservation.confirm(paymentId);
-
-                // 2. Mark Seat as SOLD
-                reservation.getSeat().confirm();
-
                 success.set(true);
-                message.set("예약이 확정되었습니다.");
+                message.set("모든 예약이 확정되었습니다.");
             });
         } catch (Exception e) {
             log.error("Failed to complete reservation", e);
@@ -356,34 +375,30 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
     }
 
     // ⑧ 예약 취소/환불
+    // ⑧ 예약 취소/환불
     @Override
     public void refundReservation(RefundReservationRequest request,
             StreamObserver<RefundReservationResponse> responseObserver) {
-        long reservationId = request.getReservationId();
-        log.info("Refunding reservation: {}", reservationId);
+        List<Long> reservationIds = request.getReservationIdsList();
+        log.info("Refunding reservations: {}", reservationIds);
 
         AtomicBoolean success = new AtomicBoolean(false);
         AtomicReference<String> message = new AtomicReference<>("");
 
         try {
             new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-                Reservation reservation = reservationRepository.findById(reservationId)
-                        .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
+                for (Long rId : reservationIds) {
+                    Reservation reservation = reservationRepository.findById(rId)
+                            .orElseThrow(() -> new IllegalArgumentException("Reservation " + rId + " not found"));
 
-                // Already cancelled check?
-                if (reservation.getStatus() == Reservation.ReservationStatus.CANCELLED) {
-                    message.set("Already cancelled");
-                    return;
+                    if (reservation.getStatus() == Reservation.ReservationStatus.CANCELLED) {
+                        continue;
+                    }
+                    reservation.cancel();
+                    reservation.getSeat().cancel();
                 }
-
-                reservation.cancel();
-                reservation.getSeat().cancel();
-
-                // If you are using explicit save, do it, but dirty checking handles it.
-                // reservationRepository.save(reservation);
-
                 success.set(true);
-                message.set("Reservation cancelled and seat freed.");
+                message.set("Reservations cancelled and seats freed.");
             });
         } catch (Exception e) {
             log.error("Refund failed", e);
@@ -440,23 +455,37 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
     }
 
     // ⑩ 예약 상세 조회 (결제 화면용)
+    // ⑩ 예약 상세 조회 (결제 화면용)
     @Override
     @Transactional(readOnly = true)
     public void getReservationDetails(GetReservationDetailsRequest request,
             StreamObserver<GetReservationDetailsResponse> responseObserver) {
-        long reservationId = request.getReservationId();
+        List<Long> reservationIds = request.getReservationIdsList();
 
         try {
-            Reservation reservation = reservationRepository.findById(reservationId)
-                    .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
+            long totalAmount = 0;
+            String firstTitle = "";
 
-            String title = reservation.getSeat().getConcertOption().getConcert().getTitle();
-            long price = reservation.getSeat().getConcertOption().getPrice();
+            for (int i = 0; i < reservationIds.size(); i++) {
+                Long rId = reservationIds.get(i);
+                Reservation reservation = reservationRepository.findById(rId)
+                        .orElseThrow(() -> new IllegalArgumentException("Reservation " + rId + " not found"));
+
+                totalAmount += reservation.getSeat().getConcertOption().getPrice();
+                if (i == 0) {
+                    firstTitle = reservation.getSeat().getConcertOption().getConcert().getTitle();
+                }
+            }
+
+            String displayTitle = firstTitle;
+            if (reservationIds.size() > 1) {
+                displayTitle += " 외 " + (reservationIds.size() - 1) + "건";
+            }
 
             GetReservationDetailsResponse response = GetReservationDetailsResponse.newBuilder()
-                    .setReservationId(reservationId)
-                    .setTitle(title)
-                    .setAmount(price)
+                    .addAllReservationIds(reservationIds)
+                    .setTitle(displayTitle)
+                    .setAmount(totalAmount)
                     .build();
 
             responseObserver.onNext(response);

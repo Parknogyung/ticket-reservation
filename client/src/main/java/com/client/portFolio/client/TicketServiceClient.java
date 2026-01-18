@@ -42,7 +42,7 @@ public class TicketServiceClient {
         return stubWithAuth.getAvailableSeats(request);
     }
 
-    public ReservationResponse reserveSeat(String token, String userId, long seatId) {
+    public ReservationResponse reserveSeat(String token, String userId, java.util.List<Long> seatIds) {
         Metadata headers = new Metadata();
         Metadata.Key<String> authKey = Metadata.Key.of("Authorization", Metadata.ASCII_STRING_MARSHALLER);
         headers.put(authKey, "Bearer " + token);
@@ -53,7 +53,7 @@ public class TicketServiceClient {
         ReservationRequest request = ReservationRequest.newBuilder()
                 .setToken(token)
                 .setUserId(userId)
-                .setSeatId(seatId)
+                .addAllSeatIds(seatIds)
                 .build();
 
         return stubWithAuth.reserveSeat(request);
@@ -66,9 +66,9 @@ public class TicketServiceClient {
         return ticketStub.getMyReservations(request);
     }
 
-    public GetReservationDetailsResponse getReservationDetails(long reservationId) {
+    public GetReservationDetailsResponse getReservationDetails(java.util.List<Long> reservationIds) {
         GetReservationDetailsRequest request = GetReservationDetailsRequest.newBuilder()
-                .setReservationId(reservationId)
+                .addAllReservationIds(reservationIds)
                 .build();
         return ticketStub.getReservationDetails(request);
     }

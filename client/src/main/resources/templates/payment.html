@@ -59,7 +59,7 @@
 <body>
     <div class="card">
         <h2>Complete Payment</h2>
-        <p>Reservation ID: <span th:text="${reservationId}"></span></p>
+        <p>Reservation IDs: <span th:text="${reservationIds}"></span></p>
 
         <div class="amount" th:text="${#numbers.formatInteger(amount, 3, 'COMMA') + ' KRW'}">50,000 KRW</div>
 
@@ -69,18 +69,23 @@
     </div>
 
     <!-- PortOne V2 SDK -->
-    <!-- PortOne V2 SDK -->
     <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
     <script th:inline="javascript">
         async function requestPayment() {
-            const reservationId = [[${ reservationId }]];
+            const reservationIds = [[${ reservationIds }]];
             const amount = [[${ amount }]];
+
+            // Format order title
+            let orderTitle = [[${ orderName }]];
+            if (!orderTitle) {
+                orderTitle = `Concert Ticket (Count: ${reservationIds.length})`;
+            }
 
             const response = await PortOne.requestPayment({
                 storeId: "store-e24364c6-6a4f-4c10-becb-9d2151f75361",
                 channelKey: "channel-key-9c589663-7b58-43d7-8d08-eb2bf433b124",
                 paymentId: `payment-${new Date().getTime()}`,
-                orderName: [[${ orderName }]] || `Concert Ticket (Res: ${reservationId})`,
+                orderName: orderTitle,
                 totalAmount: amount,
                 currency: "CURRENCY_KRW",
                 payMethod: "CARD",
@@ -106,11 +111,11 @@
             form.action = '/payment/process';
 
             const fields = {
-                reservationId: reservationId,
                 amount: amount,
                 paymentId: response.paymentId
             };
 
+            // Add other fields
             for (const key in fields) {
                 const input = document.createElement('input');
                 input.type = 'hidden';
@@ -118,6 +123,14 @@
                 input.value = fields[key];
                 form.appendChild(input);
             }
+
+            // Add reservationIds explicitly
+            const idsInput = document.createElement('input');
+            idsInput.type = 'hidden';
+            idsInput.name = 'reservationIds';
+            idsInput.value = reservationIds.join(','); // Spring converts comma-separated string to List
+            form.appendChild(idsInput);
+
             document.body.appendChild(form);
             form.submit();
         }

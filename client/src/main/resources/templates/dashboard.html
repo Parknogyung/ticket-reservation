@@ -385,7 +385,7 @@
 
     <script>
         let currentConcertId = null;
-        let selectedSeatId = null;
+        let selectedSeatIds = [];
 
         async function fetchConcerts() {
             try {
@@ -426,8 +426,10 @@
 
         function selectConcert(concert) {
             currentConcertId = concert.concertId;
+            selectedSeatIds = []; // Reset selection
             document.getElementById('current-concert-title').innerText = concert.title;
             document.getElementById('current-concert-date').innerText = concert.date;
+            updateSelectionUI();
 
             showSeatView();
             fetchSeats();
@@ -457,13 +459,7 @@
 
                 if (s.status === 'AVAILABLE') {
                     seat.onclick = () => {
-                        selectedSeatId = s.seatId;
-                        document.querySelectorAll('.seat').forEach(el => el.classList.remove('selected'));
-                        seat.classList.add('selected');
-
-                        document.getElementById('selection-info').style.display = 'block';
-                        document.getElementById('no-selection-msg').style.display = 'none';
-                        document.getElementById('selected-seat-num').innerText = s.seatNumber;
+                        toggleSeatSelection(seat, s.seatId, s.seatNumber);
                     };
                 }
 
@@ -471,21 +467,51 @@
             });
         }
 
+        function toggleSeatSelection(element, seatId, seatNumber) {
+            if (selectedSeatIds.includes(seatId)) {
+                // Deselect
+                selectedSeatIds = selectedSeatIds.filter(id => id !== seatId);
+                element.classList.remove('selected');
+            } else {
+                // Select
+                selectedSeatIds.push(seatId);
+                element.classList.add('selected');
+            }
+            updateSelectionUI();
+        }
+
+        function updateSelectionUI() {
+            const infoBox = document.getElementById('selection-info');
+            const noMsg = document.getElementById('no-selection-msg');
+            const numSpan = document.getElementById('selected-seat-num');
+
+            if (selectedSeatIds.length > 0) {
+                infoBox.style.display = 'block';
+                noMsg.style.display = 'none';
+                numSpan.innerText = selectedSeatIds.length + " seats (" + selectedSeatIds.join(', ') + ")";
+            } else {
+                infoBox.style.display = 'none';
+                noMsg.style.display = 'block';
+            }
+        }
+
         async function reserveNow() {
-            if (!selectedSeatId) return;
+            if (selectedSeatIds.length === 0) return;
 
             try {
                 const res = await fetch('/api/reserve', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ seatId: selectedSeatId })
+                    body: JSON.stringify({ seatIds: selectedSeatIds })
                 });
                 const result = await res.json();
 
                 if (result.success) {
                     showToast('Booking Successful! Redirecting to payment...', 'success');
+                    // result.reservationIds is a list
+                    const resIds = result.reservationIds.join(',');
                     setTimeout(() => {
-                        window.location.href = `/payment?reservationId=${result.reservationId}&seatId=${selectedSeatId}`;
+                        window.location.href = `/payment?reservationIds=${resIds}`;
                     }, 1000);
                 } else {
                     showToast(result.message, 'error');
@@ -572,12 +598,6 @@
                 let actionBtn = '-';
                 // Only allow cancel if SUCCESS (Confirmed)
                 if (r.status === 'SUCCESS' || r.status === 'CONFIRMED' || r.status === 'PENDING') {
-                    // Even PENDING can be cancelled (RefundReservation handles it check)
-                    // But PENDING might not have paymentId.
-                    // The logic requires paymentId only if it was paid.
-                    // If pending, maybe we just cancel reservation?
-                    // My implemented cancelPayment requires paymentId?
-                    // Let's assume passed paymentId or empty string.
                     const payId = r.paymentId || '';
                     actionBtn = `<button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.8rem; color: #ef4444; border-color: #ef4444;" onclick="cancelReservation('${payId}', ${r.reservationId})">Cancel</button>`;
                 } else if (r.status === 'CANCELLED') {
@@ -599,14 +619,17 @@
             if (!confirm("Are you sure you want to cancel?")) return;
 
             try {
+                // Send reservationIds as list (even if single)
+                // Need to encode parameter correctly for list
+                const params = new URLSearchParams();
+                params.append('paymentId', paymentId);
+                params.append('reservationIds', reservationId);
+                params.append('reason', 'User requested cancellation');
+
                 const res = await fetch('/payment/cancel', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        'paymentId': paymentId,
-                        'reservationId': reservationId,
-                        'reason': 'User requested cancellation'
-                    })
+                    body: params
                 });
                 const result = await res.json();
                 if (result.success) {

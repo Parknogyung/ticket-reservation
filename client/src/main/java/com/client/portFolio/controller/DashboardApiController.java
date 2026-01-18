@@ -84,8 +84,11 @@ public class DashboardApiController {
     }
 
     @PostMapping("/reserve")
-    public Map<String, Object> reserveSeat(@RequestBody Map<String, Long> request) {
-        Long seatId = request.get("seatId");
+    public Map<String, Object> reserveSeat(@RequestBody Map<String, Object> request) {
+        @SuppressWarnings("unchecked")
+        List<Integer> seatIdsInt = (List<Integer>) request.get("seatIds");
+        List<Long> seatIds = seatIdsInt.stream().map(Long::valueOf).collect(java.util.stream.Collectors.toList());
+
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof com.client.portFolio.security.UserPrincipal)) {
             log.error("Invalid auth state for reserveSeat: {}", auth);
@@ -99,15 +102,15 @@ public class DashboardApiController {
         String userId = String.valueOf(principal.getUserId());
         String token = principal.getAccessToken();
 
-        log.info("Web reservation request: seatId={}, userId={}", seatId, userId);
+        log.info("Web reservation request: seatIds={}, userId={}", seatIds, userId);
 
-        ReservationResponse response = ticketServiceClient.reserveSeat(token, userId, seatId);
+        ReservationResponse response = ticketServiceClient.reserveSeat(token, userId, seatIds);
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", response.getSuccess());
         result.put("message", response.getMessage());
         if (response.getSuccess()) {
-            result.put("reservationId", response.getReservationId());
+            result.put("reservationIds", response.getReservationIdsList());
         }
         return result;
     }

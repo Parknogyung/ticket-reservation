@@ -85,13 +85,13 @@ message SeatListResponse {
 message ReservationRequest {
   string token = 1;       // [보안] 대기열 토큰
   string user_id = 2;     // 사용자 ID
-  int64 seat_id = 3;      // 예약하려는 좌석 ID
+  repeated int64 seat_ids = 3; // 예약하려는 좌석 IDs
 }
 
 message ReservationResponse {
   bool success = 1;       // 성공 여부 (true/false)
   string message = 2;     // 결과 메시지
-  int64 reservation_id = 3;
+  repeated int64 reservation_ids = 3;
 }
 
 // --- ④ 로그인 관련 메시지 ---
@@ -141,7 +141,7 @@ message ConcertListResponse {
 // --- ⑦ 예약 확정 관련 메시지 ---
 message CompleteReservationRequest {
   string user_id = 1;
-  int64 reservation_id = 2;
+  repeated int64 reservation_ids = 2;
   string payment_id = 3;
 }
 
@@ -153,7 +153,7 @@ message CompleteReservationResponse {
 // --- ⑧ 결제 관련 메시지 ---
 message PaymentRequest {
   string user_id = 1;
-  int64 reservation_id = 2;
+  repeated int64 reservation_ids = 2;
   int64 amount = 3;
   string payment_id = 4;
 }
@@ -167,7 +167,7 @@ message PaymentResponse {
 message CancelPaymentRequest {
   string payment_id = 1;
   string reason = 2; // e.g. "Customer requested", "System error"
-  int64 reservation_id = 3;
+  repeated int64 reservation_ids = 3;
 }
 
 message CancelPaymentResponse {
@@ -178,7 +178,7 @@ message CancelPaymentResponse {
 // --- ⑨ 예약 취소/환불 관련 메시지 ---
 // TicketService가 PaymentService로부터 호출받아 예약 상태를 취소로 변경
 message RefundReservationRequest {
-  int64 reservation_id = 1;
+  repeated int64 reservation_ids = 1;
 }
 
 message RefundReservationResponse {
@@ -207,13 +207,13 @@ message MyReservationListResponse {
 
 // --- ⑪ 예약 상세 조회 관련 메시지 ---
 message GetReservationDetailsRequest {
-  int64 reservation_id = 1;
+  repeated int64 reservation_ids = 1;
 }
 
 message GetReservationDetailsResponse {
   string title = 1;
-  int64 amount = 2; // price
-  int64 reservation_id = 3;
+  int64 amount = 2; // price (Total)
+  repeated int64 reservation_ids = 3;
 }
 
 // --- ⑪ 이메일로 사용자 조회 관련 메시지 ---

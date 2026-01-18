@@ -44,10 +44,10 @@ public class PaymentGrpcService extends PaymentServiceGrpc.PaymentServiceImplBas
     @Override
     public void processPayment(PaymentRequest request, StreamObserver<PaymentResponse> responseObserver) {
         String userId = request.getUserId();
-        long reservationId = request.getReservationId();
+        java.util.List<Long> reservationIds = request.getReservationIdsList();
         long amount = request.getAmount();
 
-        log.info("Processing payment: userId={}, reservationId={}, amount={}", userId, reservationId, amount);
+        log.info("Processing payment: userId={}, reservationIds={}, amount={}", userId, reservationIds, amount);
 
         // 1. Verify Payment with PortOne (Mocking the API call using provided keys)
         // In a real production environment, you would use a RestTemplate or WebClient
@@ -62,12 +62,6 @@ public class PaymentGrpcService extends PaymentServiceGrpc.PaymentServiceImplBas
             paymentSuccess = false;
         }
 
-        // TODO: Implement actual API call using iniApiKey and iniApiIv if needed for
-        // server-side verification.
-        // For PortOne V2, typically we verify using the paymentId and secret.
-        // Since we have specific INIAPI keys, this might be a direct PG integration or
-        // specific hybrid setup.
-
         if (request.getPaymentId() == null || request.getPaymentId().isEmpty()) {
             paymentSuccess = false;
         }
@@ -75,11 +69,11 @@ public class PaymentGrpcService extends PaymentServiceGrpc.PaymentServiceImplBas
         if (paymentSuccess) {
             try {
                 // 2. Call Ticket Server to complete reservation
-                log.info("Payment successful. Completing reservation: {}", reservationId);
+                log.info("Payment successful. Completing reservations: {}", reservationIds);
 
                 CompleteReservationRequest completeRequest = CompleteReservationRequest.newBuilder()
                         .setUserId(userId)
-                        .setReservationId(reservationId)
+                        .addAllReservationIds(reservationIds)
                         .setPaymentId(request.getPaymentId())
                         .build();
 
@@ -125,10 +119,10 @@ public class PaymentGrpcService extends PaymentServiceGrpc.PaymentServiceImplBas
     @Override
     public void cancelPayment(CancelPaymentRequest request, StreamObserver<CancelPaymentResponse> responseObserver) {
         String paymentId = request.getPaymentId();
-        long reservationId = request.getReservationId();
+        java.util.List<Long> reservationIds = request.getReservationIdsList();
         String reason = request.getReason();
 
-        log.info("Cancelling payment: paymentId={}, reservationId={}, reason={}", paymentId, reservationId, reason);
+        log.info("Cancelling payment: paymentId={}, reservationIds={}, reason={}", paymentId, reservationIds, reason);
 
         // 1. Call PortOne to cancel payment
         boolean portOneCancelSuccess = false;
@@ -152,7 +146,7 @@ public class PaymentGrpcService extends PaymentServiceGrpc.PaymentServiceImplBas
             try {
                 // 2. Call Ticket Service to refund reservation (update status, free seat)
                 RefundReservationRequest refundRequest = RefundReservationRequest.newBuilder()
-                        .setReservationId(reservationId)
+                        .addAllReservationIds(reservationIds)
                         .build();
 
                 RefundReservationResponse refundResponse = ticketStub.refundReservation(refundRequest);
