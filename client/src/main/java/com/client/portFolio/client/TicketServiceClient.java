@@ -72,4 +72,11 @@ public class TicketServiceClient {
                 .build();
         return ticketStub.getReservationDetails(request);
     }
+
+    public GetUserByEmailResponse getUserByEmail(String email) {
+        GetUserByEmailRequest request = GetUserByEmailRequest.newBuilder()
+                .setEmail(email)
+                .build();
+        return ticketStub.getUserByEmail(request);
+    }
 }

@@ -466,4 +466,44 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
         }
         responseObserver.onCompleted();
     }
+
+    // ⑪ 이메일로 사용자 조회 (소셜 로그인용)
+    @Override
+    public void getUserByEmail(GetUserByEmailRequest request,
+            StreamObserver<GetUserByEmailResponse> responseObserver) {
+        String email = request.getEmail();
+        log.info("Fetching user by email: {}", email);
+
+        try {
+            Long userId;
+            User user = userRepository.findByEmail(email).orElse(null);
+
+            if (user == null) {
+                // Auto-register social user
+                log.info("User not found, creating new social user for: {}", email);
+                User newUser = User.builder()
+                        .email(email)
+                        .password(java.util.UUID.randomUUID().toString()) // Dummy password
+                        .role(User.Role.USER)
+                        .point(0L)
+                        .build();
+                userRepository.save(newUser);
+                userId = newUser.getId();
+            } else {
+                userId = user.getId();
+            }
+
+            GetUserByEmailResponse response = GetUserByEmailResponse.newBuilder()
+                    .setUserId(userId)
+                    .setEmail(email)
+                    .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+
+        } catch (Exception e) {
+            log.error("Failed to get/create user by email", e);
+            responseObserver.onError(e);
+        }
+    }
 }

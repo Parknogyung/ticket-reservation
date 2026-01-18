@@ -38,6 +38,9 @@ service TicketService {
   
   // ⑩ 예약 상세 조회 (결제 화면용)
   rpc GetReservationDetails (GetReservationDetailsRequest) returns (GetReservationDetailsResponse);
+  
+  // ⑪ 이메일로 사용자 조회 (소셜 로그인용)
+  rpc GetUserByEmail (GetUserByEmailRequest) returns (GetUserByEmailResponse);
 }
 
 service PaymentService {
@@ -211,4 +214,14 @@ message GetReservationDetailsResponse {
   string title = 1;
   int64 amount = 2; // price
   int64 reservation_id = 3;
+}
+
+// --- ⑪ 이메일로 사용자 조회 관련 메시지 ---
+message GetUserByEmailRequest {
+  string email = 1;
+}
+
+message GetUserByEmailResponse {
+  int64 user_id = 1;
+  string email = 2;
 }

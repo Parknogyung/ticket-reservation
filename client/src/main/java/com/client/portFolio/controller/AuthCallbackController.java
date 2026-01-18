@@ -18,6 +18,15 @@ import java.util.Collections;
 @Controller
 public class AuthCallbackController {
 
+    @org.springframework.beans.factory.annotation.Value("${jwt.secret}")
+    private String secretKey;
+
+    private final com.client.portFolio.client.TicketServiceClient ticketServiceClient;
+
+    public AuthCallbackController(com.client.portFolio.client.TicketServiceClient ticketServiceClient) {
+        this.ticketServiceClient = ticketServiceClient;
+    }
+
     @GetMapping("/auth/callback")
     public String authCallback(@RequestParam String accessToken,
             @RequestParam String refreshToken,
@@ -27,19 +36,23 @@ public class AuthCallbackController {
         log.info("Auth callback received. Token: {}", accessToken.substring(0, 10) + "...");
 
         try {
-            // In a real app, validate the token signature here using the same secret key
-            // For now, we assume the token from our trusted Auth Service is valid and trust
-            // the payload
+            // 1. Parse JWT to get Email
+            io.jsonwebtoken.Claims claims = io.jsonwebtoken.Jwts.parserBuilder()
+                    .setSigningKey(io.jsonwebtoken.security.Keys.hmacShaKeyFor(secretKey.getBytes()))
+                    .build()
+                    .parseClaimsJws(accessToken)
+                    .getBody();
 
-            // Extract user info from token (Decoding would be needed for real extraction)
-            // For this quick integration, we will create a valid session assuming success
-            // Ideally, decode JWT to get email/ID.
-            // We can just use a placeholder or basic decoding if dependencies exist.
+            String email = claims.getSubject();
+            log.info("Extracted email from token: {}", email);
 
-            // Simply create a Principal. We don't have the ID/Email readily available
-            // without decoding JWT.
-            // But we can set the token in the principal so dashboard can use it.
-            UserPrincipal principal = new UserPrincipal(0L, "social-user", accessToken);
+            // 2. Get Real User ID from Server
+            com.ticket.portfolio.GetUserByEmailResponse userResponse = ticketServiceClient.getUserByEmail(email);
+            long userId = userResponse.getUserId();
+            log.info("Resolved userId: {}", userId);
+
+            // 3. Create Principal with Real ID
+            UserPrincipal principal = new UserPrincipal(userId, email, accessToken);
 
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     principal,

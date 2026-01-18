@@ -9,3 +9,6 @@ grpc:
     payment-service:
       address: static://localhost:9092
       negotiation-type: plaintext
+
+jwt:
+  secret: vmfhaltmskdlstkfkdgodyrjsmsepsoftjqtrmthansdurskdlrjqtlsdlqslekdksgrkdhkfy
