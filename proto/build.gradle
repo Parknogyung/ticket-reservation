@@ -4,10 +4,14 @@ plugins {
 }
 
 dependencies {
-    api 'io.grpc:grpc-protobuf:1.62.2'
-    api 'io.grpc:grpc-stub:1.62.2'
-    api 'com.google.protobuf:protobuf-java:3.25.3'
-    compileOnly 'javax.annotation:javax.annotation-api:1.3.2'
+    api 'io.grpc:grpc-protobuf:1.63.0'
+    implementation 'io.grpc:grpc-stub:1.63.0'
+    implementation 'com.google.protobuf:protobuf-java:3.25.3'
+    
+    // For GrpcLogAppender
+    implementation 'ch.qos.logback:logback-classic:1.4.14'
+    implementation 'javax.annotation:javax.annotation-api:1.3.2'
+    implementation 'io.grpc:grpc-netty-shaded:1.63.0'
 }
 
 protobuf {
@@ -16,7 +20,7 @@ protobuf {
     }
     plugins {
         grpc {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.62.2"
+            artifact = "io.grpc:protoc-gen-grpc-java:1.63.0"
         }
     }
     generateProtoTasks {

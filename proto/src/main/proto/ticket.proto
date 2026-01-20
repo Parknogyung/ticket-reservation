@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/protobuf/empty.proto";
+
 // 패키지 명은 본인의 프로젝트 구조에 맞게 수정하세요.
 package com.ticket.portfolio;
 
@@ -224,4 +226,19 @@ message GetUserByEmailRequest {
 message GetUserByEmailResponse {
   int64 user_id = 1;
   string email = 2;
+}
+
+// --------------------
+// 12. Log Service (gRPC Streaming)
+// --------------------
+message LogMessage {
+  string timestamp = 1;
+  string level = 2;
+  string logger_name = 3;
+  string message = 4;
+  string service_name = 5;
+}
+
+service LogStreamService {
+  rpc StreamLogs (stream LogMessage) returns (google.protobuf.Empty);
 }

@@ -6,6 +6,7 @@ services:
       - "8082:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=dev
+      - MONITOR_HOST=monitor-service
     networks:
       - ticket-network
 
@@ -17,6 +18,7 @@ services:
       - "9090:9090"
     environment:
       - SPRING_PROFILES_ACTIVE=dev
+      - MONITOR_HOST=monitor-service
     networks:
       - ticket-network
 
@@ -28,8 +30,47 @@ services:
       - "9091:9091"
     environment:
       - SPRING_PROFILES_ACTIVE=dev
+      - MONITOR_HOST=monitor-service
     networks:
       - ticket-network
+
+  monitor-service:
+    build: ./monitor
+    container_name: monitor-service
+    ports:
+      - "8086:8086"
+      - "9095:9095"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - MONITOR_HOST=monitor-service
+    networks:
+      - ticket-network
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.10
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    networks:
+      - ticket-network
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.17.10
+    container_name: logstash
+    volumes:
+      - ./logstash/config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    ports:
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+    networks:
+      - ticket-network
+    depends_on:
+      - elasticsearch
 
 networks:
   ticket-network:

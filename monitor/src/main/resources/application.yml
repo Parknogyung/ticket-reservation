@@ -1,0 +1,10 @@
+server:
+  port: 8086
+
+elasticsearch:
+  host: localhost
+  port: 9200
+  
+grpc:
+  server:
+    port: 9095

@@ -3,31 +3,207 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
+    <title>Ticket Service Login</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .login-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .divider {
+            margin: 25px 0;
+            position: relative;
+            text-align: center;
+        }
+
+        .divider::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            border-top: 1px solid #ddd;
+        }
+
+        .divider span {
+            background-color: white;
+            padding: 0 10px;
+            color: #777;
+            position: relative;
+            font-size: 14px;
+        }
+
+        .social-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: white;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #333;
+            transition: background-color 0.2s;
+        }
+
+        .social-btn:hover {
+            background-color: #f8f9fa;
+        }
+
+        .social-btn img,
+        .social-btn svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font: inherit;
+            color: inherit;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .alert {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        .alert-info {
+            background-color: #e3f2fd;
+            color: #1565c0;
+        }
+    </style>
 </head>
 
 <body>
-    <h1>로그인</h1>
-    <div th:if="${param.error}">
-        <p style="color: red;">아이디나 비밀번호가 맞지 않습니다.</p>
-    </div>
-    <div th:if="${param.logout}">
-        <p style="color: blue;">로그아웃 되었습니다.</p>
-    </div>
+    <div class="login-container">
+        <h1>티켓 예매 서비스</h1>
 
-    <form th:action="@{/login}" method="post">
-        <div><input type="text" name="username" placeholder="Email" required /></div>
-        <div><input type="password" name="password" placeholder="Password" required /></div>
-        <button type="submit">로그인</button>
-    </form>
+        <div th:if="${param.error}" class="alert alert-error">
+            아이디 또는 비밀번호가 올바르지 않습니다.
+        </div>
+        <div th:if="${param.logout}" class="alert alert-info">
+            성공적으로 로그아웃 되었습니다.
+        </div>
 
-    <div style="margin-top: 20px;">
-        <h3>Social Login</h3>
-        <a href="http://localhost:8082/oauth2/authorization/google">
-            <button style="background-color: #dd4b39; color: white;">Login with Google</button>
+        <form th:action="@{/login}" method="post">
+            <div class="input-group">
+                <input type="text" name="username" placeholder="이메일" required />
+            </div>
+            <div class="input-group">
+                <input type="password" name="password" placeholder="비밀번호" required />
+            </div>
+            <button type="submit" class="login-btn">로그인</button>
+        </form>
+
+        <div class="divider">
+            <span>또는</span>
+        </div>
+
+        <a href="http://localhost:8082/oauth2/authorization/google" style="text-decoration: none;">
+            <div class="social-btn">
+                <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
+                        <path fill="#4285F4"
+                            d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z" />
+                        <path fill="#34A853"
+                            d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z" />
+                        <path fill="#FBBC05"
+                            d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.734 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z" />
+                        <path fill="#EA4335"
+                            d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.799 L -6.734 42.379 C -8.804 40.439 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z" />
+                    </g>
+                </svg>
+                Google 계정으로 로그인
+            </div>
         </a>
-        <a href="http://localhost:8082/oauth2/authorization/kakao">
-            <button style="background-color: #FEE500; color: #000000;">Login with Kakao</button>
+
+        <a href="http://localhost:8082/oauth2/authorization/kakao" style="text-decoration: none;">
+            <div class="social-btn" style="background-color: #FEE500; border: 1px solid #FEE500;">
+                <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#000000"
+                        d="M12 3C6.5 3 2 6.6 2 11C2 13.8 3.9 16.3 6.7 17.7C6.6 18.2 6.1 20 6 20.4C5.9 20.8 6.3 21 6.6 20.8C7.1 20.5 9.7 18.7 10.7 18.1C11.1 18.1 11.6 18.2 12 18.2C17.5 18.2 22 14.6 22 10.2C22 5.8 17.5 3 12 3Z" />
+                </svg>
+                카카오 계정으로 로그인
+            </div>
         </a>
     </div>
 </body>

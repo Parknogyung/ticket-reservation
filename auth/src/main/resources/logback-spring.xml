@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>localhost:5000</destination>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+             <customFields>{"service":"auth-service"}</customFields>
+        </encoder>
+    </appender>
+
+
+    <appender name="GRPC" class="com.ticket.portfolio.logging.GrpcLogAppender">
+        <host>${MONITOR_HOST:-localhost}</host>
+        <port>9095</port>
+        <serviceName>${serviceName}</serviceName>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="LOGSTASH" />
+        <appender-ref ref="GRPC" />
+    </root>
+</configuration>
