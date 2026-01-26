@@ -64,9 +64,19 @@ public class DashboardApiController {
                     .getPrincipal();
             String token = principal.getAccessToken();
             log.info("Fetching seats for concertOptionId: {}", concertId);
+
             SeatListResponse response = ticketServiceClient.getAvailableSeats(token, concertId);
 
             Map<String, Object> result = new HashMap<>();
+
+            if (response.getQueueActive()) {
+                result.put("status", "QUEUE");
+                result.put("message", "Traffic is high. Please wait.");
+                // Optionally provide token/info if we implemented it in proto
+                return result;
+            }
+
+            result.put("status", "OK");
             result.put("seats", response.getSeatsList().stream().map(s -> {
                 Map<String, Object> seatMap = new HashMap<>();
                 seatMap.put("seatId", s.getSeatId());
@@ -76,11 +86,34 @@ public class DashboardApiController {
             }).collect(Collectors.toList()));
 
             return result;
+
         }
 
         Map<String, Object> errorResult = new HashMap<>();
         errorResult.put("error", "인증 정보가 유효하지 않습니다.");
         return errorResult;
+    }
+
+    @GetMapping("/queue/token")
+    public Map<String, Object> checkQueueToken(@RequestParam Long concertId) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof com.client.portFolio.security.UserPrincipal)) {
+            Map<String, Object> err = new HashMap<>();
+            err.put("error", "Unauthorized");
+            return err;
+        }
+        com.client.portFolio.security.UserPrincipal principal = (com.client.portFolio.security.UserPrincipal) auth
+                .getPrincipal();
+        String userId = String.valueOf(principal.getUserId());
+
+        TokenResponse response = ticketServiceClient.issueToken(concertId, userId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", response.getToken());
+        result.put("waitPosition", response.getWaitPosition());
+        result.put("estimatedWaitSeconds", response.getEstimatedWaitSeconds());
+        result.put("canEnter", response.getCanEnter());
+        return result;
     }
 
     @PostMapping("/reserve")

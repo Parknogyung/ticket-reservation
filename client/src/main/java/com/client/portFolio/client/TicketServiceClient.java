@@ -12,6 +12,14 @@ public class TicketServiceClient {
     @GrpcClient("ticket-server")
     private TicketServiceGrpc.TicketServiceBlockingStub ticketStub;
 
+    public TokenResponse issueToken(long concertId, String userId) {
+        TokenRequest request = TokenRequest.newBuilder()
+                .setConcertId(concertId)
+                .setUserId(userId)
+                .build();
+        return ticketStub.issueToken(request);
+    }
+
     public ConcertListResponse getConcerts() {
         return ticketStub.getConcerts(GetConcertsRequest.newBuilder().build());
     }

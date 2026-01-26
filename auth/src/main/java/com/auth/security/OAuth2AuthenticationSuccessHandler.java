@@ -51,11 +51,17 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         String accessToken = jwtTokenProvider.createAccessToken(authResult);
         String refreshToken = jwtTokenProvider.createRefreshToken(authResult);
 
-        String targetUrl = UriComponentsBuilder.fromUriString("http://localhost:8083/auth/callback")
+        String clientPublicHost = System.getenv("CLIENT_PUBLIC_HOST");
+        if (clientPublicHost == null || clientPublicHost.isEmpty()) {
+            clientPublicHost = "localhost";
+        }
+
+        String targetUrl = UriComponentsBuilder.fromUriString("http://" + clientPublicHost + ":8083/auth/callback")
                 .queryParam("accessToken", accessToken)
                 .queryParam("refreshToken", refreshToken)
                 .build().toUriString();
 
+        log.info("Redirecting to: {}", targetUrl);
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

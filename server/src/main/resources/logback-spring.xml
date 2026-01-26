@@ -7,7 +7,7 @@
     </appender>
 
     <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-        <destination>localhost:5000</destination>
+        <destination>${LOGSTASH_HOST:-localhost}:5000</destination>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
              <customFields>{"service":"ticket-server"}</customFields>
         </encoder>

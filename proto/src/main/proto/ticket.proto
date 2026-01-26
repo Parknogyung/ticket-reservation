@@ -43,6 +43,9 @@ service TicketService {
   
   // ⑪ 이메일로 사용자 조회 (소셜 로그인용)
   rpc GetUserByEmail (GetUserByEmailRequest) returns (GetUserByEmailResponse);
+  
+  // ⑫ Debug: 대기열 강제 채우기
+  rpc DebugFillQueue (DebugFillQueueRequest) returns (DebugFillQueueResponse);
 }
 
 service PaymentService {
@@ -81,6 +84,7 @@ message Seat {
 
 message SeatListResponse {
   repeated Seat seats = 1;
+  bool queue_active = 2; // 대기열 활성화 여부
 }
 
 // --- ③ 예약 관련 메시지 ---
@@ -226,6 +230,18 @@ message GetUserByEmailRequest {
 message GetUserByEmailResponse {
   int64 user_id = 1;
   string email = 2;
+}
+
+// --- ⑫ Debug 관련 메시지 ---
+message DebugFillQueueRequest {
+  int64 concert_id = 1;
+  int32 count = 2; // 채울 인원 수
+}
+
+message DebugFillQueueResponse {
+  bool success = 1;
+  string message = 2;
+  int64 current_count = 3;
 }
 
 // --------------------

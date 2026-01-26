@@ -23,10 +23,11 @@ public class LogController {
 
     private final ElasticsearchClient esClient;
 
-    public LogController() {
+    public LogController(@org.springframework.beans.factory.annotation.Value("${elasticsearch.host}") String host,
+                         @org.springframework.beans.factory.annotation.Value("${elasticsearch.port}") int port) {
         // Simple manual config for now
         RestClient restClient = RestClient.builder(
-                new HttpHost("localhost", 9200)).build();
+                new HttpHost(host, port)).build();
         RestClientTransport transport = new RestClientTransport(
                 restClient, new JacksonJsonpMapper());
         this.esClient = new ElasticsearchClient(transport);

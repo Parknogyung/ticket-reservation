@@ -178,7 +178,7 @@
             <span>또는</span>
         </div>
 
-        <a href="http://localhost:8082/oauth2/authorization/google" style="text-decoration: none;">
+        <a th:href="@{${authServiceUrl} + '/oauth2/authorization/google'}" style="text-decoration: none;">
             <div class="social-btn">
                 <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
                     <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
@@ -196,7 +196,7 @@
             </div>
         </a>
 
-        <a href="http://localhost:8082/oauth2/authorization/kakao" style="text-decoration: none;">
+        <a th:href="@{${authServiceUrl} + '/oauth2/authorization/kakao'}" style="text-decoration: none;">
             <div class="social-btn" style="background-color: #FEE500; border: 1px solid #FEE500;">
                 <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
                     <path fill="#000000"

@@ -2,8 +2,8 @@ server:
   port: 8086
 
 elasticsearch:
-  host: localhost
-  port: 9200
+  host: ${ELASTICSEARCH_HOST:localhost}
+  port: ${ELASTICSEARCH_PORT:9200}
   
 grpc:
   server:

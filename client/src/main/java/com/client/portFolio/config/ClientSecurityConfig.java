@@ -19,7 +19,7 @@ public class ClientSecurityConfig {
                 http
                                 .csrf(csrf -> csrf.disable())
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/", "/login", "/css/**", "/js/**", "/auth/callback")
+                                                .requestMatchers("/", "/login", "/css/**", "/js/**", "/auth/callback", "/api/seats")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
                                 .authenticationProvider(authProvider) // gRPC 인증 프로바이더 등록

@@ -1,32 +1,31 @@
   server:
-    port: 8081 # ??(?) ?? (?????? 8080? ? ?? ?? ???)
+    port: 8081
 
   spring:
     application:
       name: ticket-server
 
-    # 1. ?????? ?? (Docker Compose? ???? ?)
-    # 1. ?????? ?? (User environment: localhost:3636, root/1234)
+    # 1. Database
     datasource:
-      url: jdbc:mariadb://0.0.0.0:3306/ticket_db?createDatabaseIfNotExist=true
+      url: jdbc:mariadb://${DB_HOST:localhost}:3306/ticket_db?createDatabaseIfNotExist=true
       username: root
       password: 1234
       driver-class-name: org.mariadb.jdbc.Driver
 
-    # 2. JPA (ORM) ??
+    # 2. JPA (ORM)
     jpa:
       hibernate:
-        ddl-auto: update  # Changed to 'update' to preserve data
+        ddl-auto: update
       show-sql: true
       properties:
         hibernate:
           format_sql: true
       open-in-view: false
 
-    # 3. Redis ??
+    # 3. Redis
     data:
       redis:
-        host: 0.0.0.0
+        host: ${REDIS_HOST:localhost}
         port: 6379
         password: 1234
 

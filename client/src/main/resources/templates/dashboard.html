@@ -383,9 +383,23 @@
 
     <div id="status-toast"></div>
 
+    <!-- Queue Modal -->
+    <div id="queue-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="text-align: center;">
+            <h2 style="margin-bottom: 16px;">Waiting in Queue</h2>
+            <div style="font-size: 3rem; margin-bottom: 20px;">⏳</div>
+            <p style="font-size: 1.2rem; margin-bottom: 10px;">Current Position: <strong id="queue-pos">-</strong></p>
+            <p style="color: var(--text-sub); margin-bottom: 24px;">Estimated Wait: <strong id="queue-wait">-</strong>
+                sec</p>
+            <p style="margin-top: 24px; font-size: 0.9rem; color: var(--text-sub);">Please do not close this window.</p>
+            <button class="btn btn-outline" style="margin-top: 20px;" onclick="cancelQueue()">Leave Queue</button>
+        </div>
+    </div>
+
     <script>
         let currentConcertId = null;
         let selectedSeatIds = [];
+        let pollingInterval = null;
 
         async function fetchConcerts() {
             try {
@@ -440,17 +454,71 @@
             container.innerHTML = 'Loading seats...';
 
             try {
+                // Fetch only once. Remove the stress test loop.
                 const res = await fetch(`/api/seats?concertId=${currentConcertId}`);
                 const data = await res.json();
+
+                if (data.status === 'QUEUE') {
+                    showQueueModal();
+                    return;
+                }
+
                 renderSeats(data.seats);
             } catch (err) {
                 showToast('Failed to load seats', 'error');
             }
         }
 
+        function showQueueModal() {
+            document.getElementById('queue-modal').style.display = 'flex';
+            pollQueueStatus(); // Initial call
+            if (pollingInterval) clearInterval(pollingInterval);
+            pollingInterval = setInterval(pollQueueStatus, 3000); // Poll every 3 seconds
+        }
+
+        async function pollQueueStatus() {
+            if (!currentConcertId) return;
+            try {
+                const res = await fetch(`/api/queue/token?concertId=${currentConcertId}`);
+                const data = await res.json();
+
+                if (data.error) {
+                    clearInterval(pollingInterval);
+                    showToast(data.error, 'error');
+                    closeQueueModal();
+                    return;
+                }
+
+                document.getElementById('queue-pos').innerText = data.waitPosition > 0 ? data.waitPosition : "Calculating...";
+                document.getElementById('queue-wait').innerText = data.estimatedWaitSeconds >= 0 ? data.estimatedWaitSeconds : "-";
+
+                if (data.canEnter) {
+                    clearInterval(pollingInterval);
+                    showToast("It's your turn!", "success");
+                    closeQueueModal();
+                    // Retry fetching seats
+                    fetchSeats();
+                }
+            } catch (err) {
+                console.error("Queue polling failed", err);
+            }
+        }
+
+        function cancelQueue() {
+            if (pollingInterval) clearInterval(pollingInterval);
+            closeQueueModal();
+            showListView();
+        }
+
+        function closeQueueModal() {
+            document.getElementById('queue-modal').style.display = 'none';
+        }
+
         function renderSeats(seats) {
             const container = document.getElementById('seat-container');
             container.innerHTML = '';
+
+            if (!seats) return;
 
             seats.forEach(s => {
                 const seat = document.createElement('div');

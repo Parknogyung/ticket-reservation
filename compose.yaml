@@ -7,18 +7,74 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - MONITOR_HOST=monitor-service
+      - CLIENT_PUBLIC_HOST=localhost
+      - LOGSTASH_HOST=logstash
     networks:
       - ticket-network
+    depends_on:
+      - ticket-server
+
+  client-service:
+    build: ./client
+    container_name: client-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - TICKET_SERVER_HOST=ticket-server
+      - PAYMENT_SERVICE_HOST=payment-service
+      - AUTH_SERVICE_HOST=auth-service
+      - AUTH_SERVICE_URL=http://localhost:8082
+      - LOGSTASH_HOST=logstash
+    networks:
+      - ticket-network
+    depends_on:
+      auth-service:
+        condition: service_started
+      ticket-server:
+        condition: service_started
 
   ticket-server:
     build: ./server
     container_name: ticket-server
     ports:
-      - "8081:8080"
+      - "8081:8081"
       - "9090:9090"
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - MONITOR_HOST=monitor-service
+      - DB_HOST=mariadb
+      - REDIS_HOST=redis
+    networks:
+      - ticket-network
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: mariadb
+    environment:
+      - MARIADB_DATABASE=ticket_db
+      - MARIADB_ROOT_PASSWORD=1234
+    ports:
+      - "3306:3306"
+    networks:
+      - ticket-network
+    healthcheck:
+      test: [ "CMD", "mariadb-admin", "ping", "-h", "localhost", "-p1234" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    command: redis-server --requirepass 1234
+    ports:
+      - "6379:6379"
     networks:
       - ticket-network
 
@@ -31,8 +87,11 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - MONITOR_HOST=monitor-service
+      - TICKET_SERVER_HOST=ticket-server
     networks:
       - ticket-network
+    depends_on:
+      - ticket-server
 
   monitor-service:
     build: ./monitor
@@ -43,10 +102,13 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - MONITOR_HOST=monitor-service
+      - ELASTICSEARCH_HOST=elasticsearch
+      - LOGSTASH_HOST=logstash
     networks:
       - ticket-network
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_started
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.10
@@ -70,7 +132,8 @@ services:
     networks:
       - ticket-network
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_started
 
 networks:
   ticket-network:
