@@ -1,4 +1,48 @@
 services:
+  # Spring Cloud Infrastructure Services
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - ticket-network
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8761/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  config-server:
+    build: ./config-server
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    networks:
+      - ticket-network
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    networks:
+      - ticket-network
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_started
+
+  # Application Services
   auth-service:
     build: ./auth
     container_name: auth-service
@@ -9,10 +53,14 @@ services:
       - MONITOR_HOST=monitor-service
       - CLIENT_PUBLIC_HOST=localhost
       - LOGSTASH_HOST=logstash
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
     networks:
       - ticket-network
     depends_on:
-      - ticket-server
+      eureka-server:
+        condition: service_healthy
+      ticket-server:
+        condition: service_started
 
   client-service:
     build: ./client
@@ -26,6 +74,7 @@ services:
       - AUTH_SERVICE_HOST=auth-service
       - AUTH_SERVICE_URL=http://localhost:8082
       - LOGSTASH_HOST=logstash
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
     networks:
       - ticket-network
     depends_on:
@@ -45,9 +94,13 @@ services:
       - MONITOR_HOST=monitor-service
       - DB_HOST=mariadb
       - REDIS_HOST=redis
+      - LOGSTASH_HOST=logstash
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
     networks:
       - ticket-network
     depends_on:
+      eureka-server:
+        condition: service_healthy
       mariadb:
         condition: service_healthy
       redis:
@@ -72,7 +125,6 @@ services:
   redis:
     image: redis:latest
     container_name: redis
-    command: redis-server --requirepass 1234
     ports:
       - "6379:6379"
     networks:
@@ -88,10 +140,14 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
       - MONITOR_HOST=monitor-service
       - TICKET_SERVER_HOST=ticket-server
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
     networks:
       - ticket-network
     depends_on:
-      - ticket-server
+      eureka-server:
+        condition: service_healthy
+      ticket-server:
+        condition: service_started
 
   monitor-service:
     build: ./monitor
@@ -104,9 +160,12 @@ services:
       - MONITOR_HOST=monitor-service
       - ELASTICSEARCH_HOST=elasticsearch
       - LOGSTASH_HOST=logstash
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
     networks:
       - ticket-network
     depends_on:
+      eureka-server:
+        condition: service_healthy
       elasticsearch:
         condition: service_started
 

@@ -10,8 +10,18 @@ grpc:
     port: 9091
   client:
     ticket-server:
-      address: static://${TICKET_SERVER_HOST:localhost}:9090
+      address: discovery:///ticket-server
       negotiation-type: plaintext
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+    metadata-map:
+      gRPC.port: ${grpc.server.port}
 
 portone:
   channel-key: channel-key-9c589663-7b58-43d7-8d08-eb2bf433b124

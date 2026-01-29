@@ -1,14 +1,26 @@
 server:
   port: 8083
 
+spring:
+  application:
+    name: client-service
+
 grpc:
   client:
     ticket-server:
-      address: static://${TICKET_SERVER_HOST:localhost}:9090
+      address: discovery:///ticket-server
       negotiation-type: plaintext
     payment-service:
-      address: static://${PAYMENT_SERVICE_HOST:localhost}:9091
+      address: discovery:///payment-service
       negotiation-type: plaintext
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
 
 jwt:
   secret: vmfhaltmskdlstkfkdgodyrjsmsepsoftjqtrmthansdurskdlrjqtlsdlqslekdksgrkdhkfy
