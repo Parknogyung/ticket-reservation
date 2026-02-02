@@ -21,17 +21,8 @@ public class AiGrpcService extends AIServiceGrpc.AIServiceImplBase {
                 request.getUserId(), request.getMessage());
 
         try {
-            String aiResponse;
-
-            // 히스토리가 있으면 히스토리를 포함하여 호출
-            if (request.getHistoryCount() > 0) {
-                aiResponse = geminiChatService.chatWithHistory(
-                        request.getMessage(),
-                        request.getHistoryList());
-            } else {
-                // 단순 메시지 전송
-                aiResponse = geminiChatService.chat(request.getMessage());
-            }
+            // Simple chat without history for now
+            String aiResponse = geminiChatService.chat(request.getMessage());
 
             // 성공 응답 생성
             ChatResponse response = ChatResponse.newBuilder()

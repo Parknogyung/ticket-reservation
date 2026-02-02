@@ -2,13 +2,10 @@ spring:
   application:
     name: ai-service
   ai:
-    vertex:
-      ai:
-        gemini:
-          api-key: ${GEMINI_API_KEY}
-          project-id: ${VERTEX_AI_PROJECT_ID:default-project}
-          location: ${VERTEX_AI_LOCATION:us-central1}
-          model: gemini-1.5-flash
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY}
+        model: gemini-1.5-flash
           
 server:
   port: 8087

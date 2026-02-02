@@ -1,101 +1,80 @@
 package com.ticket.portfolio.ai.service;
 
-import lombok.RequiredArgsConstructor;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class GeminiChatService {
 
-    private final ChatModel chatModel;
+    @Value("${spring.ai.google.genai.api-key}")
+    private String apiKey;
 
-    /**
-     * Gemini API를 호출하여 채팅 응답을 생성합니다.
-     * 
-     * @param userMessage 사용자 메시지
-     * @return AI 응답 메시지
-     */
-    public String chat(String userMessage) {
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+
+    public GeminiChatService() {
+        this.restTemplate = new RestTemplate();
+        this.objectMapper = new ObjectMapper();
+    }
+
+    public String chat(String message) {
         try {
-            log.info("Sending message to Gemini: {}", userMessage);
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key="
+                    + apiKey;
 
-            // ChatClient를 사용하여 간단한 메시지 전송
-            ChatClient chatClient = ChatClient.create(chatModel);
+            // Build request body
+            ObjectNode requestBody = objectMapper.createObjectNode();
+            ArrayNode contents = objectMapper.createArrayNode();
+            ObjectNode content = objectMapper.createObjectNode();
+            ArrayNode parts = objectMapper.createArrayNode();
+            ObjectNode part = objectMapper.createObjectNode();
+            part.put("text", message);
+            parts.add(part);
+            content.set("parts", parts);
+            contents.add(content);
+            requestBody.set("contents", contents);
 
-            var chatResponse = chatClient.prompt()
-                    .user(userMessage)
-                    .call()
-                    .chatResponse();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
 
-            if (chatResponse == null || chatResponse.getResult() == null || chatResponse.getResult().getOutput() == null) {
-                log.error("Gemini API returned null response");
-                throw new RuntimeException("Gemini API가 빈 응답을 반환했습니다.");
+            HttpEntity<String> request = new HttpEntity<>(requestBody.toString(), headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+
+            if (response.getStatusCode() == HttpStatus.OK) {
+                JsonNode responseJson = objectMapper.readTree(response.getBody());
+                return extractTextFromResponse(responseJson);
+            } else {
+                log.error("Gemini API error: {}", response.getStatusCode());
+                return "AI 서비스 오류가 발생했습니다.";
             }
-
-            String response = chatResponse.getResult().getOutput().getContent();
-
-            log.info("Received response from Gemini: {}", response);
-            return response;
-
         } catch (Exception e) {
             log.error("Error calling Gemini API", e);
             throw new RuntimeException("AI 서비스 호출 중 오류가 발생했습니다: " + e.getMessage(), e);
         }
     }
 
-    /**
-     * 대화 히스토리를 포함한 채팅
-     * 
-     * @param userMessage 사용자 메시지
-     * @param history     대화 히스토리 (role, content 쌍)
-     * @return AI 응답 메시지
-     */
-    public String chatWithHistory(String userMessage, List<com.ticket.portfolio.ChatMessage> history) {
+    private String extractTextFromResponse(JsonNode responseJson) {
         try {
-            log.info("Sending message with history to Gemini");
-
-            List<Message> messages = new ArrayList<>();
-
-            // 히스토리를 Message로 변환
-            if (history != null && !history.isEmpty()) {
-                for (com.ticket.portfolio.ChatMessage msg : history) {
-                    // Spring AI는 role이 "user"인 경우 UserMessage를 사용
-                    if ("user".equals(msg.getRole())) {
-                        messages.add(new UserMessage(msg.getContent()));
-                    }
-                    // assistant 메시지는 생략 (Gemini는 주로 user 메시지 기반)
-                }
-            }
-
-            // 현재 메시지 추가
-            messages.add(new UserMessage(userMessage));
-
-            Prompt prompt = new Prompt(messages);
-            var chatResponse = chatModel.call(prompt);
-            
-            if (chatResponse == null || chatResponse.getResult() == null || chatResponse.getResult().getOutput() == null) {
-                log.error("Gemini API returned null response");
-                throw new RuntimeException("Gemini API가 빈 응답을 반환했습니다.");
-            }
-            
-            String response = chatResponse.getResult().getOutput().getContent();
-
-            log.info("Received response from Gemini with history");
-            return response;
-
+            return responseJson
+                    .path("candidates")
+                    .get(0)
+                    .path("content")
+                    .path("parts")
+                    .get(0)
+                    .path("text")
+                    .asText();
         } catch (Exception e) {
-            log.error("Error calling Gemini API with history", e);
-            throw new RuntimeException("AI 서비스 호출 중 오류가 발생했습니다: " + e.getMessage(), e);
+            log.error("Error parsing Gemini response", e);
+            return "응답을 처리하는 중 오류가 발생했습니다.";
         }
     }
 }

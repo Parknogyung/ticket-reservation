@@ -21,13 +21,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     
-    // Spring AI - Google Vertex AI (Gemini)
-    // Use Vertex AI Gemini instead of generic Spring AI
-    implementation 'org.springframework.ai:spring-ai-vertex-ai-gemini:1.0.0-M5'
-    
-    // Google Cloud Vertex AI SDK
-    implementation platform('com.google.cloud:libraries-bom:26.48.0')
-    implementation 'com.google.cloud:google-cloud-vertexai'
+    // JSON processing
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
     
     // gRPC Server
     implementation 'net.devh:grpc-server-spring-boot-starter:3.1.0.RELEASE'

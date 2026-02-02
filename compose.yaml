@@ -116,7 +116,7 @@ services:
       - "9097:9097"
     environment:
       - SPRING_PROFILES_ACTIVE=dev
-      - GEMINI_API_KEY=AIzaSyCNalIVLBpMmQZBMJXh7GjO_TxlJi2aSx4
+      - GEMINI_API_KEY=AIzaSyCtktHS5uLi00F6RXClRt2rOYbFNu9D790
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
     networks:
       - ticket-network
