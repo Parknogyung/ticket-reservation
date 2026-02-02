@@ -1,6 +1,6 @@
-package com.client.portFolio.controller;
+package com.client.portfolio.controller;
 
-import com.client.portFolio.security.UserPrincipal;
+import com.client.portfolio.security.UserPrincipal;
 import com.ticket.portfolio.PaymentRequest;
 import com.ticket.portfolio.PaymentResponse;
 import com.ticket.portfolio.PaymentServiceGrpc;
@@ -22,7 +22,7 @@ public class PaymentController {
     @GrpcClient("payment-service")
     private PaymentServiceGrpc.PaymentServiceBlockingStub paymentStub;
 
-    private final com.client.portFolio.client.TicketServiceClient ticketServiceClient;
+    private final com.client.portfolio.client.TicketServiceClient ticketServiceClient;
 
     @GetMapping("/payment")
     public String paymentPage(@RequestParam java.util.List<Long> reservationIds, Model model) {

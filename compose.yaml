@@ -82,6 +82,8 @@ services:
         condition: service_started
       ticket-server:
         condition: service_started
+      ai-service:
+        condition: service_healthy
 
   ticket-server:
     build: ./server
@@ -105,6 +107,27 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+
+  ai-service:
+    build: ./ai-service
+    container_name: ai-service
+    ports:
+      - "8087:8087"
+      - "9097:9097"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - GEMINI_API_KEY=AIzaSyCNalIVLBpMmQZBMJXh7GjO_TxlJi2aSx4
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    networks:
+      - ticket-network
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8087/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mariadb:
     image: mariadb:10.11

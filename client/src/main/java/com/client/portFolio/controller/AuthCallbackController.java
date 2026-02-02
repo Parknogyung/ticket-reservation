@@ -1,6 +1,6 @@
-package com.client.portFolio.controller;
+package com.client.portfolio.controller;
 
-import com.client.portFolio.security.UserPrincipal;
+import com.client.portfolio.security.UserPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -21,9 +21,9 @@ public class AuthCallbackController {
     @org.springframework.beans.factory.annotation.Value("${jwt.secret}")
     private String secretKey;
 
-    private final com.client.portFolio.client.TicketServiceClient ticketServiceClient;
+    private final com.client.portfolio.client.TicketServiceClient ticketServiceClient;
 
-    public AuthCallbackController(com.client.portFolio.client.TicketServiceClient ticketServiceClient) {
+    public AuthCallbackController(com.client.portfolio.client.TicketServiceClient ticketServiceClient) {
         this.ticketServiceClient = ticketServiceClient;
     }
 

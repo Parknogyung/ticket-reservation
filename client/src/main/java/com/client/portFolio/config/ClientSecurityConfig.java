@@ -1,4 +1,4 @@
-package com.client.portFolio.config;
+package com.client.portfolio.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,14 +12,15 @@ import org.springframework.security.web.SecurityFilterChain;
 @RequiredArgsConstructor
 public class ClientSecurityConfig {
 
-        private final com.client.portFolio.security.GrpcAuthenticationProvider authProvider;
+        private final com.client.portfolio.security.GrpcAuthenticationProvider authProvider;
 
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
                 http
                                 .csrf(csrf -> csrf.disable())
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/", "/login", "/css/**", "/js/**", "/auth/callback", "/api/seats")
+                                                .requestMatchers("/", "/login", "/css/**", "/js/**", "/auth/callback",
+                                                                "/api/seats", "/chat", "/api/chat/**")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
                                 .authenticationProvider(authProvider) // gRPC 인증 프로바이더 등록

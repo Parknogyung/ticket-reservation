@@ -1,4 +1,4 @@
-package com.client.portFolio.security;
+package com.client.portfolio.security;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

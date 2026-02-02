@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: ai-service
+  ai:
+    vertex:
+      ai:
+        gemini:
+          api-key: ${GEMINI_API_KEY}
+          project-id: ${VERTEX_AI_PROJECT_ID:default-project}
+          location: ${VERTEX_AI_LOCATION:us-central1}
+          model: gemini-1.5-flash
+          
+server:
+  port: 8087
+
+grpc:
+  server:
+    port: 9097
+    
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+    metadata-map:
+      gRPC.port: ${grpc.server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.ticket.portfolio: DEBUG
+    org.springframework.ai: DEBUG

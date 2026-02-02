@@ -1,4 +1,4 @@
-package com.client.portFolio.client;
+package com.client.portfolio.client;
 
 import com.ticket.portfolio.*;
 import io.grpc.Metadata;

@@ -1,6 +1,6 @@
-package com.client.portFolio.controller;
+package com.client.portfolio.controller;
 
-import com.client.portFolio.client.TicketServiceClient;
+import com.client.portfolio.client.TicketServiceClient;
 import com.ticket.portfolio.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,8 +59,8 @@ public class DashboardApiController {
     @GetMapping("/seats")
     public Map<String, Object> getSeats(@RequestParam Long concertId) {
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof com.client.portFolio.security.UserPrincipal) {
-            com.client.portFolio.security.UserPrincipal principal = (com.client.portFolio.security.UserPrincipal) auth
+        if (auth != null && auth.getPrincipal() instanceof com.client.portfolio.security.UserPrincipal) {
+            com.client.portfolio.security.UserPrincipal principal = (com.client.portfolio.security.UserPrincipal) auth
                     .getPrincipal();
             String token = principal.getAccessToken();
             log.info("Fetching seats for concertOptionId: {}", concertId);
@@ -97,12 +97,12 @@ public class DashboardApiController {
     @GetMapping("/queue/token")
     public Map<String, Object> checkQueueToken(@RequestParam Long concertId) {
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof com.client.portFolio.security.UserPrincipal)) {
+        if (auth == null || !(auth.getPrincipal() instanceof com.client.portfolio.security.UserPrincipal)) {
             Map<String, Object> err = new HashMap<>();
             err.put("error", "Unauthorized");
             return err;
         }
-        com.client.portFolio.security.UserPrincipal principal = (com.client.portFolio.security.UserPrincipal) auth
+        com.client.portfolio.security.UserPrincipal principal = (com.client.portfolio.security.UserPrincipal) auth
                 .getPrincipal();
         String userId = String.valueOf(principal.getUserId());
 
@@ -123,14 +123,14 @@ public class DashboardApiController {
         List<Long> seatIds = seatIdsInt.stream().map(Long::valueOf).collect(java.util.stream.Collectors.toList());
 
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof com.client.portFolio.security.UserPrincipal)) {
+        if (auth == null || !(auth.getPrincipal() instanceof com.client.portfolio.security.UserPrincipal)) {
             log.error("Invalid auth state for reserveSeat: {}", auth);
             Map<String, Object> errorResult = new HashMap<>();
             errorResult.put("success", false);
             errorResult.put("message", "인증 정보가 유효하지 않습니다.");
             return errorResult;
         }
-        com.client.portFolio.security.UserPrincipal principal = (com.client.portFolio.security.UserPrincipal) auth
+        com.client.portfolio.security.UserPrincipal principal = (com.client.portfolio.security.UserPrincipal) auth
                 .getPrincipal();
         String userId = String.valueOf(principal.getUserId());
         String token = principal.getAccessToken();
@@ -151,13 +151,13 @@ public class DashboardApiController {
     @GetMapping("/my-reservations")
     public Map<String, Object> getMyReservations() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof com.client.portFolio.security.UserPrincipal)) {
+        if (auth == null || !(auth.getPrincipal() instanceof com.client.portfolio.security.UserPrincipal)) {
             Map<String, Object> errorResult = new HashMap<>();
             errorResult.put("error", "인증 정보가 유효하지 않습니다.");
             return errorResult;
         }
 
-        com.client.portFolio.security.UserPrincipal principal = (com.client.portFolio.security.UserPrincipal) auth
+        com.client.portfolio.security.UserPrincipal principal = (com.client.portfolio.security.UserPrincipal) auth
                 .getPrincipal();
         String userId = String.valueOf(principal.getUserId());
 

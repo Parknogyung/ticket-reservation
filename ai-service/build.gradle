@@ -1,0 +1,50 @@
+plugins {
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.spring.io/milestone' }
+    maven { url 'https://repo.spring.io/snapshot' }
+}
+
+ext {
+    set('springCloudVersion', "2023.0.3")
+}
+
+dependencies {
+    implementation project(':proto')
+    
+    // Spring Boot Starters
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    
+    // Spring AI - Google Vertex AI (Gemini)
+    // Use Vertex AI Gemini instead of generic Spring AI
+    implementation 'org.springframework.ai:spring-ai-vertex-ai-gemini:1.0.0-M5'
+    
+    // Google Cloud Vertex AI SDK
+    implementation platform('com.google.cloud:libraries-bom:26.48.0')
+    implementation 'com.google.cloud:google-cloud-vertexai'
+    
+    // gRPC Server
+    implementation 'net.devh:grpc-server-spring-boot-starter:3.1.0.RELEASE'
+    
+    // Spring Cloud
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    implementation 'org.springframework.cloud:spring-cloud-starter-config'
+    implementation 'org.springframework.cloud:spring-cloud-starter-bootstrap'
+    
+    // Utils
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+        mavenBom "org.springframework.ai:spring-ai-bom:1.0.0-M5"
+    }
+}

@@ -258,3 +258,31 @@ message LogMessage {
 service LogStreamService {
   rpc StreamLogs (stream LogMessage) returns (google.protobuf.Empty);
 }
+
+// --------------------
+// 13. AI Service (Google Gemini Integration)
+// --------------------
+service AIService {
+  // 단일 메시지 채팅
+  rpc Chat (ChatRequest) returns (ChatResponse);
+  
+  // 스트리밍 채팅 (추후 구현)
+  // rpc StreamChat (stream ChatRequest) returns (stream ChatResponse);
+}
+
+message ChatRequest {
+  string user_id = 1;           // 사용자 ID
+  string message = 2;           // 사용자 메시지
+  repeated ChatMessage history = 3; // 대화 히스토리 (선택적)
+}
+
+message ChatResponse {
+  string message = 1;           // AI 응답 메시지
+  bool success = 2;             // 성공 여부
+  string error = 3;             // 에러 메시지 (실패 시)
+}
+
+message ChatMessage {
+  string role = 1;              // "user" 또는 "assistant"
+  string content = 2;           // 메시지 내용
+}

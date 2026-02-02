@@ -13,6 +13,9 @@ grpc:
     payment-service:
       address: discovery:///payment-service
       negotiation-type: plaintext
+    ai-service:
+      address: discovery:///ai-service
+      negotiation-type: plaintext
 
 eureka:
   client:

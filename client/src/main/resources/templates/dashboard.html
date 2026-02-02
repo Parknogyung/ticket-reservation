@@ -271,6 +271,65 @@
             display: none;
             z-index: 2000;
         }
+
+        /* Floating Chat Button */
+        .floating-chat-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1500;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            animation: pulse-glow 2s infinite;
+        }
+
+        .floating-chat-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+        }
+
+        .floating-chat-btn:active {
+            transform: translateY(-1px) scale(1.02);
+        }
+
+        .floating-chat-btn .icon {
+            font-size: 28px;
+            animation: bounce-icon 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 10px 40px rgba(102, 126, 234, 0.7);
+            }
+        }
+
+        @keyframes bounce-icon {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-3px);
+            }
+        }
     </style>
     </style>
     <!-- Flatpickr -->
@@ -382,6 +441,11 @@
     </div>
 
     <div id="status-toast"></div>
+
+    <!-- Floating AI Chat Button -->
+    <a href="/chat" class="floating-chat-btn" title="AI Assistant">
+        <div class="icon">💬</div>
+    </a>
 
     <!-- Queue Modal -->
     <div id="queue-modal" class="modal" style="display: none;">
