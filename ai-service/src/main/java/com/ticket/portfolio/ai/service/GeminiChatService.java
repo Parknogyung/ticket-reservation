@@ -17,6 +17,9 @@ public class GeminiChatService {
     @Value("${spring.ai.google.genai.api-key}")
     private String apiKey;
 
+    @Value("${spring.ai.google.genai.model}")
+    private String model;
+
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -27,7 +30,7 @@ public class GeminiChatService {
 
     public String chat(String message) {
         try {
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key="
+            String url = "https://generativelanguage.googleapis.com/v1/models/" + model + ":generateContent?key="
                     + apiKey;
 
             // Build request body
@@ -50,12 +53,20 @@ public class GeminiChatService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
 
             if (response.getStatusCode() == HttpStatus.OK) {
-                JsonNode responseJson = objectMapper.readTree(response.getBody());
+                String responseBody = response.getBody();
+                log.debug("Gemini API response: {}", responseBody);
+                JsonNode responseJson = objectMapper.readTree(responseBody);
                 return extractTextFromResponse(responseJson);
             } else {
                 log.error("Gemini API error: {}", response.getStatusCode());
                 return "AI 서비스 오류가 발생했습니다.";
             }
+        } catch (org.springframework.web.client.HttpClientErrorException.TooManyRequests e) {
+            log.error("Gemini API rate limit exceeded", e);
+            throw new RuntimeException("AI 서비스 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.", e);
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("Gemini API HTTP error: {}", e.getStatusCode(), e);
+            throw new RuntimeException("AI 서비스 호출 중 오류가 발생했습니다: " + e.getStatusCode(), e);
         } catch (Exception e) {
             log.error("Error calling Gemini API", e);
             throw new RuntimeException("AI 서비스 호출 중 오류가 발생했습니다: " + e.getMessage(), e);
@@ -64,16 +75,34 @@ public class GeminiChatService {
 
     private String extractTextFromResponse(JsonNode responseJson) {
         try {
-            return responseJson
-                    .path("candidates")
-                    .get(0)
-                    .path("content")
-                    .path("parts")
-                    .get(0)
-                    .path("text")
-                    .asText();
+            log.debug("Parsing response JSON: {}", responseJson.toString());
+            
+            JsonNode candidates = responseJson.path("candidates");
+            if (candidates.isMissingNode() || !candidates.isArray() || candidates.size() == 0) {
+                log.error("No candidates found in response: {}", responseJson.toString());
+                return "AI 응답을 찾을 수 없습니다.";
+            }
+            
+            JsonNode firstCandidate = candidates.get(0);
+            JsonNode content = firstCandidate.path("content");
+            JsonNode parts = content.path("parts");
+            
+            if (parts.isMissingNode() || !parts.isArray() || parts.size() == 0) {
+                log.error("No parts found in response content: {}", responseJson.toString());
+                return "AI 응답 형식이 올바르지 않습니다.";
+            }
+            
+            JsonNode firstPart = parts.get(0);
+            JsonNode textNode = firstPart.path("text");
+            
+            if (textNode.isMissingNode()) {
+                log.error("No text found in response part: {}", responseJson.toString());
+                return "AI 응답 텍스트를 찾을 수 없습니다.";
+            }
+            
+            return textNode.asText();
         } catch (Exception e) {
-            log.error("Error parsing Gemini response", e);
+            log.error("Error parsing Gemini response: {}", responseJson.toString(), e);
             return "응답을 처리하는 중 오류가 발생했습니다.";
         }
     }

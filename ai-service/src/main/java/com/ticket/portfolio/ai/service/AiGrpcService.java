@@ -21,8 +21,8 @@ public class AiGrpcService extends AIServiceGrpc.AIServiceImplBase {
                 request.getUserId(), request.getMessage());
 
         try {
-            // Simple chat without history for now
-            String aiResponse = geminiChatService.chat(request.getMessage());
+            String enhancedMessage = buildEnhancedMessage(request);
+            String aiResponse = geminiChatService.chat(enhancedMessage);
 
             // 성공 응답 생성
             ChatResponse response = ChatResponse.newBuilder()
@@ -48,5 +48,29 @@ public class AiGrpcService extends AIServiceGrpc.AIServiceImplBase {
             responseObserver.onNext(errorResponse);
             responseObserver.onCompleted();
         }
+    }
+
+    private String buildEnhancedMessage(ChatRequest request) {
+        StringBuilder messageBuilder = new StringBuilder();
+        
+        // 시스템 프롬프트 추가
+        messageBuilder.append("당신은 티켓 예매 시스템의 AI 어시스턴트입니다. ");
+        messageBuilder.append("사용자의 질문에 친절하고 정확하게 답변해주세요.\n\n");
+        
+        // 대화 히스토리가 있으면 추가
+        if (request.getHistoryCount() > 0) {
+            messageBuilder.append("=== 이전 대화 ===\n");
+            for (var historyMsg : request.getHistoryList()) {
+                String role = historyMsg.getRole().equals("user") ? "사용자" : "AI";
+                messageBuilder.append(role).append(": ").append(historyMsg.getContent()).append("\n");
+            }
+            messageBuilder.append("\n");
+        }
+        
+        // 현재 사용자 메시지
+        messageBuilder.append("=== 현재 질문 ===\n");
+        messageBuilder.append(request.getMessage());
+        
+        return messageBuilder.toString();
     }
 }

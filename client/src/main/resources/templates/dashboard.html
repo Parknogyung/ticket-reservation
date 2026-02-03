@@ -481,8 +481,17 @@
 
             if (!concerts || concerts.length === 0) {
                 container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 100px; color: var(--text-sub);">No tickets registered yet.</p>';
+                localStorage.removeItem('concerts');
                 return;
             }
+
+            // AI가 분석할 수 있도록 티켓 정보를 localStorage에 저장
+            localStorage.setItem('concerts', JSON.stringify(concerts.map(c => ({
+                title: c.title,
+                concert_date: c.date,
+                price: c.price,
+                available_seats: c.availableSeats
+            }))));
 
             concerts.forEach(c => {
                 const card = document.createElement('div');

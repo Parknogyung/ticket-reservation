@@ -453,6 +453,25 @@
             }, 5000);
         }
 
+        // 현재 페이지의 티켓 정보를 가져오는 함수
+        function getPageContext() {
+            // 대시보드에서 티켓 정보를 가져옴 (localStorage 또는 sessionStorage 사용)
+            const concerts = localStorage.getItem('concerts');
+            if (concerts) {
+                try {
+                    const concertList = JSON.parse(concerts);
+                    let context = "현재 페이지에 표시된 티켓 정보:\n";
+                    concertList.forEach((concert, index) => {
+                        context += `${index + 1}. ${concert.title} - ${concert.concert_date}, 가격: ${concert.price}원, 남은 좌석: ${concert.available_seats}석\n`;
+                    });
+                    return context;
+                } catch (e) {
+                    console.error('Failed to parse concerts:', e);
+                }
+            }
+            return null;
+        }
+
         // 메시지 전송
         async function sendMessage() {
             const message = chatInput.value.trim();
@@ -467,12 +486,18 @@
             showTypingIndicator();
 
             try {
+                const context = getPageContext();
+                const requestBody = { message: message };
+                if (context) {
+                    requestBody.context = context;
+                }
+
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ message: message })
+                    body: JSON.stringify(requestBody)
                 });
 
                 const data = await response.json();
