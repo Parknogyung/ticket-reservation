@@ -13,7 +13,8 @@ import net.devh.boot.grpc.server.service.GrpcService;
 @RequiredArgsConstructor
 public class AiGrpcService extends AIServiceGrpc.AIServiceImplBase {
 
-    private final GeminiChatService geminiChatService;
+    private final OllamaChatService ollamaChatService;
+    private final ProjectDataService projectDataService;
 
     @Override
     public void chat(ChatRequest request, StreamObserver<ChatResponse> responseObserver) {
@@ -22,7 +23,8 @@ public class AiGrpcService extends AIServiceGrpc.AIServiceImplBase {
 
         try {
             String enhancedMessage = buildEnhancedMessage(request);
-            String aiResponse = geminiChatService.chat(enhancedMessage);
+            String context = projectDataService.getProjectContext();
+            String aiResponse = ollamaChatService.chatWithContext(enhancedMessage, context);
 
             // 성공 응답 생성
             ChatResponse response = ChatResponse.newBuilder()

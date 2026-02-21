@@ -42,7 +42,13 @@ public class ChatController {
             String userId = authentication != null ? authentication.getName() : "anonymous";
             log.info("Chat request from user: {}, message: {}", userId, request.getMessage());
 
-            String aiResponse = aiServiceClient.chat(userId, request.getMessage());
+            // 컨텍스트가 있으면 메시지에 포함
+            String enhancedMessage = request.getMessage();
+            if (request.getContext() != null && !request.getContext().isEmpty()) {
+                enhancedMessage = "=== 현재 페이지 정보 ===\n" + request.getContext() + "\n\n=== 사용자 질문 ===\n" + request.getMessage();
+            }
+
+            String aiResponse = aiServiceClient.chat(userId, enhancedMessage);
 
             response.put("success", true);
             response.put("message", aiResponse);
@@ -62,5 +68,6 @@ public class ChatController {
     @Data
     public static class ChatRequestDto {
         private String message;
+        private String context; // 티켓 정보 등의 컨텍스트
     }
 }

@@ -4,8 +4,18 @@ spring:
   ai:
     google:
       genai:
-        api-key: ${GEMINI_API_KEY}
+        api-key: ${GEMINI_API_KEY:}
         model: gemini-2.5-flash
+
+# Ollama Configuration
+ollama:
+  base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+  model: ${OLLAMA_MODEL:llama3.2:latest}
+
+# Ticket Server URL for fetching project data
+ticket:
+  server:
+    url: ${TICKET_SERVER_URL:http://ticket-server:8081}
           
 server:
   port: 8087
