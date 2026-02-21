@@ -12,6 +12,12 @@ ollama:
   base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
   model: ${OLLAMA_MODEL:llama3.2:latest}
 
+# AnythingLLM Configuration
+anythingllm:
+  base-url: ${ANYTHINGLLM_BASE_URL:http://localhost:3001}
+  api-key: ${ANYTHINGLLM_API_KEY:}
+  workspace-slug: ${ANYTHINGLLM_WORKSPACE:ticket-system}
+
 # Ticket Server URL for fetching project data
 ticket:
   server:

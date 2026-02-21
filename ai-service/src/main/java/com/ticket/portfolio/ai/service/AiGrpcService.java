@@ -13,8 +13,7 @@ import net.devh.boot.grpc.server.service.GrpcService;
 @RequiredArgsConstructor
 public class AiGrpcService extends AIServiceGrpc.AIServiceImplBase {
 
-    private final OllamaChatService ollamaChatService;
-    private final ProjectDataService projectDataService;
+    private final HybridAIService hybridAIService;
 
     @Override
     public void chat(ChatRequest request, StreamObserver<ChatResponse> responseObserver) {
@@ -23,8 +22,8 @@ public class AiGrpcService extends AIServiceGrpc.AIServiceImplBase {
 
         try {
             String enhancedMessage = buildEnhancedMessage(request);
-            String context = projectDataService.getProjectContext();
-            String aiResponse = ollamaChatService.chatWithContext(enhancedMessage, context);
+            // HybridAIService가 AnythingLLM + Ollama를 자동으로 통합하여 처리
+            String aiResponse = hybridAIService.chat(enhancedMessage, null);
 
             // 성공 응답 생성
             ChatResponse response = ChatResponse.newBuilder()
