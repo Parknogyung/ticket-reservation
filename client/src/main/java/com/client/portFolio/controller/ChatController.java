@@ -20,10 +20,13 @@ public class ChatController {
     private final AiServiceClient aiServiceClient;
 
     /**
-     * 채팅 페이지 렌더링
+     * 채팅 페이지 렌더링 (인증 필요)
      */
     @GetMapping("/chat")
-    public String chatPage() {
+    public String chatPage(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "redirect:/login";
+        }
         return "chat";
     }
 

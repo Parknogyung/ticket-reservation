@@ -38,6 +38,7 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
     private final RedissonClient redissonClient;
     private final PlatformTransactionManager transactionManager;
     private final JwtTokenProvider jwtTokenProvider;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -392,27 +393,11 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
         com.ticket.portfolio.LoginResponse.Builder responseBuilder = com.ticket.portfolio.LoginResponse.newBuilder();
 
         try {
-            if ("user1@test.com".equals(email) && "1234".equals(password)) {
-                log.info("Demo user login success: {}", email);
-                // 데모 유저도 DB에서 조회해 ID를 가져오거나 없으면 생성
-                User user = userRepository.findByEmail(email).orElseGet(() -> {
-                    User newUser = User.builder()
-                            .email(email)
-                            .password(password)
-                            .role(User.Role.USER)
-                            .point(0L)
-                            .build();
-                    return userRepository.save(newUser);
-                });
-                sendLoginSuccess(user, responseBuilder, responseObserver);
-                return;
-            }
-
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
-            if (user.getPassword().equals(password)) {
-                log.info("DB user login success: {}", email);
+            if (passwordEncoder.matches(password, user.getPassword())) {
+                log.info("Login success: {}", email);
                 sendLoginSuccess(user, responseBuilder, responseObserver);
             } else {
                 log.warn("Login failed: password mismatch for {}", email);
@@ -420,6 +405,11 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
                 responseObserver.onNext(responseBuilder.build());
                 responseObserver.onCompleted();
             }
+        } catch (IllegalArgumentException e) {
+            log.warn("Login failed: {}", e.getMessage());
+            responseBuilder.setSuccess(false).setMessage(e.getMessage());
+            responseObserver.onNext(responseBuilder.build());
+            responseObserver.onCompleted();
         } catch (Exception e) {
             log.error("Login process error: ", e);
             responseBuilder.setSuccess(false).setMessage("인증 과정에서 오류가 발생했습니다: " + e.getMessage());

@@ -1,50 +1,95 @@
 package com.server.portfolio.controller;
 
+import com.server.portfolio.domain.User;
+import com.server.portfolio.repository.UserRepository;
 import com.server.portfolio.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@CrossOrigin(origins = {"http://localhost:8083", "http://localhost:8080"}, allowCredentials = "true")
 public class AuthController {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final org.springframework.data.redis.core.RedisTemplate<String, String> redisTemplate;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @PostMapping("/register")
+    public ResponseEntity<Map<String, Object>> register(@RequestBody RegisterRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+                response.put("success", false);
+                response.put("message", "이미 등록된 이메일입니다.");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            User user = User.builder()
+                    .email(request.getEmail())
+                    .password(passwordEncoder.encode(request.getPassword()))
+                    .role(User.Role.USER)
+                    .point(0L)
+                    .build();
+            userRepository.save(user);
+
+            log.info("User registered: {}", request.getEmail());
+            response.put("success", true);
+            response.put("message", "회원가입이 완료되었습니다.");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Registration error", e);
+            response.put("success", false);
+            response.put("message", "회원가입 중 오류가 발생했습니다: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        // 실제 운영 시에는 DB에서 사용자 확인 및 비밀번호 체크 로직이 들어가야 함
-        // 현재는 학습 및 데모용으로 모든 로그인 허용 (테스트용 ID: user@example.com / PW: password)
+        Map<String, Object> response = new HashMap<>();
+        try {
+            User user = userRepository.findByEmail(loginRequest.getEmail())
+                    .orElse(null);
 
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                loginRequest.getEmail(),
-                null,
-                java.util.Collections.singletonList(
-                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER")));
+            if (user == null || !passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+                response.put("success", false);
+                response.put("message", "이메일 또는 비밀번호가 올바르지 않습니다.");
+                return ResponseEntity.status(401).body(response);
+            }
 
-        String accessToken = jwtTokenProvider.createAccessToken(authentication);
-        String refreshToken = jwtTokenProvider.createRefreshToken(authentication);
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    loginRequest.getEmail(), null,
+                    java.util.Collections.singletonList(
+                            new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER")));
 
-        // Redis에 Refresh Token 저장 (Key: UserEmail, Value: RefreshToken, TTL: 14일)
-        redisTemplate.opsForValue().set(
-                "RT:" + loginRequest.getEmail(),
-                refreshToken,
-                1209600000,
-                java.util.concurrent.TimeUnit.MILLISECONDS);
+            String accessToken = jwtTokenProvider.createAccessToken(authentication);
+            String refreshToken = jwtTokenProvider.createRefreshToken(authentication);
 
-        return ResponseEntity.ok(new TokenResponse(accessToken, refreshToken));
+            redisTemplate.opsForValue().set(
+                    "RT:" + loginRequest.getEmail(), refreshToken,
+                    1209600000, java.util.concurrent.TimeUnit.MILLISECONDS);
+
+            return ResponseEntity.ok(new TokenResponse(accessToken, refreshToken));
+
+        } catch (Exception e) {
+            log.error("Login error", e);
+            response.put("success", false);
+            response.put("message", "로그인 중 오류가 발생했습니다.");
+            return ResponseEntity.status(500).body(response);
+        }
     }
 
     @PostMapping("/refresh")
@@ -90,25 +135,27 @@ public class AuthController {
         return ResponseEntity.ok("Use the gRPC service to init or add a dedicated method here.");
     }
 
+    public static class RegisterRequest {
+        private String email;
+        private String username;
+        private String password;
+
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+    }
+
     public static class LoginRequest {
         private String email;
         private String password;
 
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
     }
 
     public static class RefreshRequest {

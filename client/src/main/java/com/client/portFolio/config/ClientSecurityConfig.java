@@ -19,7 +19,7 @@ public class ClientSecurityConfig {
                 http
                                 .csrf(csrf -> csrf.disable())
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/", "/login", "/css/**", "/js/**", "/auth/callback",
+                                                .requestMatchers("/", "/login", "/register", "/api/register", "/css/**", "/js/**", "/auth/callback",
                                                                 "/api/seats", "/chat", "/api/chat/**")
                                                 .permitAll()
                                                 .anyRequest().authenticated())

@@ -117,12 +117,20 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - GEMINI_API_KEY=AIzaSyCtktHS5uLi00F6RXClRt2rOYbFNu9D790
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=gemma3:4b
+      - ANYTHINGLLM_BASE_URL=http://host.docker.internal:3001
+      - ANYTHINGLLM_API_KEY=3N3QQWV-9KZM71C-HEARMXD-1RXN4C4
+      - ANYTHINGLLM_WORKSPACE=ticket-system
+      - TICKET_SERVER_URL=http://ticket-server:8081
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
     networks:
       - ticket-network
     depends_on:
       eureka-server:
         condition: service_healthy
+      ticket-server:
+        condition: service_started
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8087/actuator/health" ]
       interval: 10s
