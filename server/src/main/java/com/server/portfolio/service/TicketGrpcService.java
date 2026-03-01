@@ -56,7 +56,11 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
             AtomicLong concertOptionId = new AtomicLong(-1);
             new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
                 // 1. 공연 생성
-                Concert concert = new Concert(title);
+                Concert concert = Concert.builder()
+                        .title(title)
+                        .venue(request.getVenue())
+                        .imageUrl(request.getImageUrl())
+                        .build();
                 concertRepository.save(concert);
 
                 // 2. 공연 옵션(회차) 생성
@@ -113,6 +117,8 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
                         .setConcertDate(option.getConcertDate().format(DATE_FORMATTER))
                         .setAvailableSeats((int) availableCount)
                         .setPrice(option.getPrice())
+                        .setVenue(option.getConcert().getVenue() != null ? option.getConcert().getVenue() : "")
+                        .setImageUrl(option.getConcert().getImageUrl() != null ? option.getConcert().getImageUrl() : "")
                         .build());
             }
             responseObserver.onNext(responseBuilder.build());
@@ -421,9 +427,11 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
     private void sendLoginSuccess(User user, com.ticket.portfolio.LoginResponse.Builder responseBuilder,
             StreamObserver<com.ticket.portfolio.LoginResponse> responseObserver) {
         String email = user.getEmail();
+        String roleStr = user.getRole() != null ? user.getRole().name() : "USER";
+
         org.springframework.security.core.Authentication auth = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
                 email, null, java.util.Collections.singletonList(
-                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER")));
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + roleStr)));
 
         String accessToken = jwtTokenProvider.createAccessToken(auth);
         String refreshToken = jwtTokenProvider.createRefreshToken(auth);
@@ -434,6 +442,7 @@ public class TicketGrpcService extends TicketServiceGrpc.TicketServiceImplBase {
                 .setAccessToken(accessToken)
                 .setRefreshToken(refreshToken)
                 .setUserId(user.getId())
+                .setRole(roleStr)
                 .setMessage("로그인에 성공했습니다.")
                 .build();
         responseObserver.onNext(response);

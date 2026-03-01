@@ -112,6 +112,7 @@ message LoginResponse {
   string refresh_token = 3;
   string message = 4;
   int64 user_id = 5;
+  string role = 6;
 }
 
 // --- ⑤ 티켓 등록 관련 메시지 ---
@@ -120,6 +121,8 @@ message RegisterConcertRequest {
   int32 seat_count = 2;
   string concert_date = 3; // yyyy-MM-dd HH:mm:ss
   int64 price = 4;
+  string venue = 5;       // 공연 지역
+  string image_url = 6;   // 포스터 이미지 URL
 }
 
 message RegisterConcertResponse {
@@ -138,6 +141,8 @@ message ConcertInfo {
   string concert_date = 3;
   int32 available_seats = 4;
   int64 price = 5;
+  string venue = 6;       // 공연 지역
+  string image_url = 7;   // 포스터 이미지 URL
 }
 
 message ConcertListResponse {

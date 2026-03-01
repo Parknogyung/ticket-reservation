@@ -58,12 +58,13 @@
             padding: 0 20px;
         }
 
-        /* Concert List View */
         .view-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .view-title {
@@ -103,6 +104,29 @@
             background: #eff6ff;
         }
 
+        /* Search bar */
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1.5px solid #e2e8f0;
+            font-size: 1rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        .search-bar input:focus {
+            border-color: var(--primary);
+        }
+
+        /* Concert Grid */
         .concert-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -123,19 +147,43 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
 
+        .concert-img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: block;
+        }
+
+        .concert-img-placeholder {
+            width: 100%;
+            height: 180px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+
         .concert-info {
             padding: 20px;
         }
 
         .concert-title {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 700;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+        }
+
+        .concert-venue {
+            color: var(--text-sub);
+            font-size: 0.85rem;
+            margin-bottom: 4px;
         }
 
         .concert-date {
             color: var(--text-sub);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             margin-bottom: 16px;
         }
 
@@ -237,12 +285,14 @@
             padding: 32px;
             border-radius: 20px;
             width: 100%;
-            max-width: 450px;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
         .form-group label {
@@ -257,6 +307,29 @@
             border-radius: 8px;
             border: 1px solid #e2e8f0;
             font-size: 1rem;
+        }
+
+        /* Image upload preview */
+        .img-upload-area {
+            border: 2px dashed #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .img-upload-area:hover {
+            border-color: var(--primary);
+        }
+
+        #img-preview {
+            width: 100%;
+            max-height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-top: 12px;
+            display: none;
         }
 
         #status-toast {
@@ -289,22 +362,15 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 1500;
             border: 3px solid rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
             animation: pulse-glow 2s infinite;
         }
 
         .floating-chat-btn:hover {
             transform: translateY(-3px) scale(1.05);
-            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
-        }
-
-        .floating-chat-btn:active {
-            transform: translateY(-1px) scale(1.02);
         }
 
         .floating-chat-btn .icon {
             font-size: 28px;
-            animation: bounce-icon 2s infinite;
         }
 
         @keyframes pulse-glow {
@@ -318,21 +384,7 @@
                 box-shadow: 0 10px 40px rgba(102, 126, 234, 0.7);
             }
         }
-
-        @keyframes bounce-icon {
-
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-3px);
-            }
-        }
     </style>
-    </style>
-    <!-- Flatpickr -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </head>
@@ -350,17 +402,26 @@
         </div>
     </nav>
 
+    <!-- List View -->
     <div class="container" id="list-view">
         <div class="view-header">
             <h2 class="view-title">Available Concerts</h2>
-            <button class="btn btn-primary" onclick="openRegisterModal()">+ Register Ticket</button>
+            <!-- 관리자만 등록 버튼 표시 -->
+            <button sec:authorize="hasRole('ADMIN')" class="btn btn-primary" onclick="openRegisterModal()">+ Register
+                Ticket</button>
         </div>
+
+        <!-- 검색 바 -->
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="🔍 공연명 또는 지역으로 검색..." oninput="filterConcerts()">
+        </div>
+
         <div id="concert-container" class="concert-grid">
-            <!-- Loading -->
             <p>Loading concerts...</p>
         </div>
     </div>
 
+    <!-- Seat View -->
     <div class="container" id="seat-view">
         <div class="back-btn" onclick="showListView()">← Back to list</div>
         <div class="view-header">
@@ -369,9 +430,7 @@
         </div>
 
         <div class="seat-layout">
-            <div id="seat-container" class="seat-grid">
-                <!-- Seats will be rendered here -->
-            </div>
+            <div id="seat-container" class="seat-grid"><!-- Seats --></div>
             <div class="booking-card">
                 <div style="background: white; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
                     <h3 style="margin-bottom: 16px;">Reservation Summary</h3>
@@ -405,21 +464,23 @@
                             <th style="padding: 12px;">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="reservation-table-body">
-                        <!-- Rows -->
-                    </tbody>
+                    <tbody id="reservation-table-body"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Registration Modal -->
+    <!-- Registration Modal (Admin Only) -->
     <div id="register-modal" class="modal">
         <div class="modal-content">
             <h2 style="margin-bottom: 24px;">Register New Ticket</h2>
             <div class="form-group">
                 <label>Title</label>
                 <input type="text" id="reg-title" placeholder="e.g. Coldplay Live 2026">
+            </div>
+            <div class="form-group">
+                <label>Venue (지역)</label>
+                <input type="text" id="reg-venue" placeholder="e.g. 서울 올림픽공원">
             </div>
             <div class="form-group">
                 <label>Seat Count</label>
@@ -430,10 +491,20 @@
                 <input type="number" id="reg-price" placeholder="e.g. 50000">
             </div>
             <div class="form-group">
-                <label>Date (yyyy-MM-dd HH:mm:ss)</label>
+                <label>Date</label>
                 <input type="text" id="reg-date" placeholder="Select Date and Time">
             </div>
-            <div style="display: flex; gap: 12px; margin-top: 32px;">
+            <div class="form-group">
+                <label>Poster Image</label>
+                <div class="img-upload-area" onclick="document.getElementById('reg-image-file').click()">
+                    <div id="img-upload-hint">🖼️ 클릭하여 이미지 업로드</div>
+                    <img id="img-preview" alt="preview">
+                </div>
+                <input type="file" id="reg-image-file" accept="image/*" style="display:none"
+                    onchange="previewAndUploadImage(event)">
+                <input type="hidden" id="reg-image-url">
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
                 <button class="btn btn-outline" style="flex: 1;" onclick="closeRegisterModal()">Cancel</button>
                 <button class="btn btn-primary" style="flex: 1;" onclick="submitRegistration()">Register</button>
             </div>
@@ -464,15 +535,26 @@
         let currentConcertId = null;
         let selectedSeatIds = [];
         let pollingInterval = null;
+        let allConcerts = [];
 
         async function fetchConcerts() {
             try {
                 const res = await fetch('/api/concerts');
                 const data = await res.json();
-                renderConcerts(data.concerts);
+                allConcerts = data.concerts || [];
+                renderConcerts(allConcerts);
             } catch (err) {
                 showToast('Failed to load concerts', 'error');
             }
+        }
+
+        function filterConcerts() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const filtered = allConcerts.filter(c =>
+                (c.title || '').toLowerCase().includes(query) ||
+                (c.venue || '').toLowerCase().includes(query)
+            );
+            renderConcerts(filtered);
         }
 
         function renderConcerts(concerts) {
@@ -480,26 +562,34 @@
             container.innerHTML = '';
 
             if (!concerts || concerts.length === 0) {
-                container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 100px; color: var(--text-sub);">No tickets registered yet.</p>';
-                localStorage.removeItem('concerts');
+                container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 100px; color: var(--text-sub);">No tickets found.</p>';
                 return;
             }
 
-            // AI가 분석할 수 있도록 티켓 정보를 localStorage에 저장
             localStorage.setItem('concerts', JSON.stringify(concerts.map(c => ({
                 title: c.title,
                 concert_date: c.date,
                 price: c.price,
-                available_seats: c.availableSeats
+                available_seats: c.availableSeats,
+                venue: c.venue
             }))));
 
             concerts.forEach(c => {
                 const card = document.createElement('div');
                 card.className = 'concert-card';
                 card.onclick = () => selectConcert(c);
+
+                const imgHtml = c.imageUrl
+                    ? `<img class="concert-img" src="${c.imageUrl}" alt="${c.title}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+                    : '';
+                const placeholderHtml = `<div class="concert-img-placeholder" style="${c.imageUrl ? 'display:none' : ''}">🎵</div>`;
+                const venueHtml = c.venue ? `<div class="concert-venue">📍 ${c.venue}</div>` : '';
+
                 card.innerHTML = `
+                    ${imgHtml}${placeholderHtml}
                     <div class="concert-info">
                         <div class="concert-title">${c.title}</div>
+                        ${venueHtml}
                         <div class="concert-date">📅 ${c.date}</div>
                         <div class="concert-stats">
                             <span class="badge badge-success">${c.availableSeats} seats left</span>
@@ -513,11 +603,10 @@
 
         function selectConcert(concert) {
             currentConcertId = concert.concertId;
-            selectedSeatIds = []; // Reset selection
+            selectedSeatIds = [];
             document.getElementById('current-concert-title').innerText = concert.title;
             document.getElementById('current-concert-date').innerText = concert.date;
             updateSelectionUI();
-
             showSeatView();
             fetchSeats();
         }
@@ -525,17 +614,10 @@
         async function fetchSeats() {
             const container = document.getElementById('seat-container');
             container.innerHTML = 'Loading seats...';
-
             try {
-                // Fetch only once. Remove the stress test loop.
                 const res = await fetch(`/api/seats?concertId=${currentConcertId}`);
                 const data = await res.json();
-
-                if (data.status === 'QUEUE') {
-                    showQueueModal();
-                    return;
-                }
-
+                if (data.status === 'QUEUE') { showQueueModal(); return; }
                 renderSeats(data.seats);
             } catch (err) {
                 showToast('Failed to load seats', 'error');
@@ -544,9 +626,9 @@
 
         function showQueueModal() {
             document.getElementById('queue-modal').style.display = 'flex';
-            pollQueueStatus(); // Initial call
+            pollQueueStatus();
             if (pollingInterval) clearInterval(pollingInterval);
-            pollingInterval = setInterval(pollQueueStatus, 3000); // Poll every 3 seconds
+            pollingInterval = setInterval(pollQueueStatus, 3000);
         }
 
         async function pollQueueStatus() {
@@ -554,67 +636,34 @@
             try {
                 const res = await fetch(`/api/queue/token?concertId=${currentConcertId}`);
                 const data = await res.json();
-
-                if (data.error) {
-                    clearInterval(pollingInterval);
-                    showToast(data.error, 'error');
-                    closeQueueModal();
-                    return;
-                }
-
+                if (data.error) { clearInterval(pollingInterval); showToast(data.error, 'error'); closeQueueModal(); return; }
                 document.getElementById('queue-pos').innerText = data.waitPosition > 0 ? data.waitPosition : "Calculating...";
                 document.getElementById('queue-wait').innerText = data.estimatedWaitSeconds >= 0 ? data.estimatedWaitSeconds : "-";
-
-                if (data.canEnter) {
-                    clearInterval(pollingInterval);
-                    showToast("It's your turn!", "success");
-                    closeQueueModal();
-                    // Retry fetching seats
-                    fetchSeats();
-                }
-            } catch (err) {
-                console.error("Queue polling failed", err);
-            }
+                if (data.canEnter) { clearInterval(pollingInterval); showToast("It's your turn!", "success"); closeQueueModal(); fetchSeats(); }
+            } catch (err) { console.error("Queue polling failed", err); }
         }
 
-        function cancelQueue() {
-            if (pollingInterval) clearInterval(pollingInterval);
-            closeQueueModal();
-            showListView();
-        }
-
-        function closeQueueModal() {
-            document.getElementById('queue-modal').style.display = 'none';
-        }
+        function cancelQueue() { if (pollingInterval) clearInterval(pollingInterval); closeQueueModal(); showListView(); }
+        function closeQueueModal() { document.getElementById('queue-modal').style.display = 'none'; }
 
         function renderSeats(seats) {
             const container = document.getElementById('seat-container');
             container.innerHTML = '';
-
             if (!seats) return;
-
             seats.forEach(s => {
                 const seat = document.createElement('div');
                 seat.className = `seat ${s.status}`;
                 seat.innerText = s.seatNumber;
-
-                if (s.status === 'AVAILABLE') {
-                    seat.onclick = () => {
-                        toggleSeatSelection(seat, s.seatId, s.seatNumber);
-                    };
-                }
-
+                if (s.status === 'AVAILABLE') seat.onclick = () => toggleSeatSelection(seat, s.seatId, s.seatNumber);
                 container.appendChild(seat);
             });
         }
 
         function toggleSeatSelection(element, seatId, seatNumber) {
             if (selectedSeatIds.includes(seatId)) {
-                // Deselect
                 selectedSeatIds = selectedSeatIds.filter(id => id !== seatId);
                 element.classList.remove('selected');
             } else {
-                // Select
                 selectedSeatIds.push(seatId);
                 element.classList.add('selected');
             }
@@ -625,20 +674,16 @@
             const infoBox = document.getElementById('selection-info');
             const noMsg = document.getElementById('no-selection-msg');
             const numSpan = document.getElementById('selected-seat-num');
-
             if (selectedSeatIds.length > 0) {
-                infoBox.style.display = 'block';
-                noMsg.style.display = 'none';
+                infoBox.style.display = 'block'; noMsg.style.display = 'none';
                 numSpan.innerText = selectedSeatIds.length + " seats (" + selectedSeatIds.join(', ') + ")";
             } else {
-                infoBox.style.display = 'none';
-                noMsg.style.display = 'block';
+                infoBox.style.display = 'none'; noMsg.style.display = 'block';
             }
         }
 
         async function reserveNow() {
             if (selectedSeatIds.length === 0) return;
-
             try {
                 const res = await fetch('/api/reserve', {
                     method: 'POST',
@@ -646,29 +691,61 @@
                     body: JSON.stringify({ seatIds: selectedSeatIds })
                 });
                 const result = await res.json();
-
                 if (result.success) {
                     showToast('Booking Successful! Redirecting to payment...', 'success');
-                    // result.reservationIds is a list
                     const resIds = result.reservationIds.join(',');
-                    setTimeout(() => {
-                        window.location.href = `/payment?reservationIds=${resIds}`;
-                    }, 1000);
+                    setTimeout(() => { window.location.href = `/payment?reservationIds=${resIds}`; }, 1000);
                 } else {
                     showToast(result.message, 'error');
                 }
+            } catch (err) { showToast('Booking failed', 'error'); }
+        }
+
+        async function previewAndUploadImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // 미리보기
+            const reader = new FileReader();
+            reader.onload = e => {
+                const preview = document.getElementById('img-preview');
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                document.getElementById('img-upload-hint').innerText = file.name;
+            };
+            reader.readAsDataURL(file);
+
+            // 서버 업로드
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const res = await fetch('/api/upload-image', { method: 'POST', body: formData });
+                const result = await res.json();
+                if (result.success) {
+                    document.getElementById('reg-image-url').value = result.url;
+                    showToast('이미지 업로드 완료!', 'success');
+                } else {
+                    showToast('이미지 업로드 실패: ' + result.message, 'error');
+                }
             } catch (err) {
-                showToast('Booking failed', 'error');
+                showToast('이미지 업로드 중 오류 발생', 'error');
             }
         }
 
         async function submitRegistration() {
+            const imageUrl = document.getElementById('reg-image-url').value;
             const payload = {
                 title: document.getElementById('reg-title').value,
+                venue: document.getElementById('reg-venue').value,
                 seatCount: parseInt(document.getElementById('reg-count').value),
                 price: parseInt(document.getElementById('reg-price').value),
-                date: document.getElementById('reg-date').value
+                date: document.getElementById('reg-date').value,
+                imageUrl: imageUrl
             };
+
+            if (!payload.title || !payload.seatCount || !payload.price || !payload.date) {
+                showToast('필수 항목을 모두 입력해주세요.', 'error'); return;
+            }
 
             try {
                 const res = await fetch('/api/concerts', {
@@ -677,7 +754,6 @@
                     body: JSON.stringify(payload)
                 });
                 const result = await res.json();
-
                 if (result.success) {
                     showToast('Concert Registered!', 'success');
                     closeRegisterModal();
@@ -685,9 +761,7 @@
                 } else {
                     showToast(result.message, 'error');
                 }
-            } catch (err) {
-                showToast('Registration failed', 'error');
-            }
+            } catch (err) { showToast('Registration failed', 'error'); }
         }
 
         function showListView() {
@@ -713,38 +787,30 @@
         async function fetchReservations() {
             const tbody = document.getElementById('reservation-table-body');
             tbody.innerHTML = '<tr><td colspan="5" style="padding: 20px; text-align: center;">Loading...</td></tr>';
-
             try {
                 const res = await fetch('/api/my-reservations');
                 const data = await res.json();
                 renderReservations(data.reservations);
-            } catch (err) {
-                showToast('Failed to load reservations', 'error');
-            }
+            } catch (err) { showToast('Failed to load reservations', 'error'); }
         }
 
         function renderReservations(list) {
             const tbody = document.getElementById('reservation-table-body');
             tbody.innerHTML = '';
-
             if (!list || list.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" style="padding: 20px; text-align: center;">No reservations found.</td></tr>';
                 return;
             }
-
             list.forEach(r => {
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid #e2e8f0';
-
                 let actionBtn = '-';
-                // Only allow cancel if SUCCESS (Confirmed)
                 if (r.status === 'SUCCESS' || r.status === 'CONFIRMED' || r.status === 'PENDING') {
                     const payId = r.paymentId || '';
                     actionBtn = `<button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.8rem; color: #ef4444; border-color: #ef4444;" onclick="cancelReservation('${payId}', ${r.reservationId})">Cancel</button>`;
                 } else if (r.status === 'CANCELLED') {
                     actionBtn = '<span style="color: #94a3b8;">Cancelled</span>';
                 }
-
                 tr.innerHTML = `
                     <td style="padding: 12px;">${r.concertTitle}</td>
                     <td style="padding: 12px;">${r.concertDate}</td>
@@ -758,41 +824,34 @@
 
         async function cancelReservation(paymentId, reservationId) {
             if (!confirm("Are you sure you want to cancel?")) return;
-
             try {
-                // Send reservationIds as list (even if single)
-                // Need to encode parameter correctly for list
                 const params = new URLSearchParams();
                 params.append('paymentId', paymentId);
                 params.append('reservationIds', reservationId);
                 params.append('reason', 'User requested cancellation');
-
                 const res = await fetch('/payment/cancel', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: params
                 });
                 const result = await res.json();
-                if (result.success) {
-                    showToast('Cancellation Successful', 'success');
-                    fetchReservations();
-                } else {
-                    showToast(result.message || 'Failed', 'error');
-                }
-            } catch (err) {
-                showToast('Error cancelling', 'error');
-            }
+                if (result.success) { showToast('Cancellation Successful', 'success'); fetchReservations(); }
+                else { showToast(result.message || 'Failed', 'error'); }
+            } catch (err) { showToast('Error cancelling', 'error'); }
         }
 
         function openRegisterModal() {
             document.getElementById('register-modal').style.display = 'flex';
+            // reset
+            document.getElementById('reg-image-url').value = '';
+            document.getElementById('img-preview').style.display = 'none';
+            document.getElementById('img-upload-hint').innerText = '🖼️ 클릭하여 이미지 업로드';
             flatpickr("#reg-date", {
-                enableTime: true,
-                dateFormat: "Y-m-d H:i:S",
-                minDate: "today",
-                time_24hr: true
+                enableTime: true, dateFormat: "Y-m-d H:i:S",
+                minDate: "today", time_24hr: true
             });
         }
+
         function closeRegisterModal() { document.getElementById('register-modal').style.display = 'none'; }
 
         function showToast(msg, type) {

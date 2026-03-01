@@ -24,12 +24,15 @@ public class TicketServiceClient {
         return ticketStub.getConcerts(GetConcertsRequest.newBuilder().build());
     }
 
-    public RegisterConcertResponse registerConcert(String title, int seatCount, String concertDate, long price) {
+    public RegisterConcertResponse registerConcert(String title, int seatCount, String concertDate, long price,
+            String venue, String imageUrl) {
         RegisterConcertRequest request = RegisterConcertRequest.newBuilder()
                 .setTitle(title)
                 .setSeatCount(seatCount)
                 .setConcertDate(concertDate)
                 .setPrice(price)
+                .setVenue(venue != null ? venue : "")
+                .setImageUrl(imageUrl != null ? imageUrl : "")
                 .build();
         return ticketStub.registerConcert(request);
     }

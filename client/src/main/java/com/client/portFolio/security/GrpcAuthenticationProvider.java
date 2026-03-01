@@ -39,11 +39,16 @@ public class GrpcAuthenticationProvider implements AuthenticationProvider {
 
             if (response.getSuccess()) {
                 log.info("gRPC authentication successful for user: {}", email);
+                String role = response.getRole();
+                if (role == null || role.isEmpty()) {
+                    role = "USER";
+                }
+
                 UserPrincipal principal = new UserPrincipal(response.getUserId(), email, response.getAccessToken());
                 return new UsernamePasswordAuthenticationToken(
                         principal,
                         response.getAccessToken(),
-                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role)));
             } else {
                 log.warn("gRPC authentication failed for user: {}. Reason: {}", email, response.getMessage());
                 throw new BadCredentialsException(response.getMessage());

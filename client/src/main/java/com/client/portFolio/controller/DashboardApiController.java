@@ -32,6 +32,9 @@ public class DashboardApiController {
             map.put("title", c.getTitle());
             map.put("date", c.getConcertDate());
             map.put("availableSeats", c.getAvailableSeats());
+            map.put("price", c.getPrice());
+            map.put("venue", c.getVenue());
+            map.put("imageUrl", c.getImageUrl());
             return map;
         }).collect(Collectors.toList()));
 
@@ -40,14 +43,24 @@ public class DashboardApiController {
 
     @PostMapping("/concerts")
     public Map<String, Object> registerConcert(@RequestBody Map<String, Object> request) {
+        // 관리자만 등록 가능
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin) {
+            return Map.of("success", false, "message", "관리자만 공연을 등록할 수 있습니다.");
+        }
+
         String title = (String) request.get("title");
         int seatCount = (Integer) request.get("seatCount");
         String date = (String) request.get("date");
-        // Handle number/string price input
         long price = Long.parseLong(request.getOrDefault("price", "0").toString());
+        String venue = (String) request.getOrDefault("venue", "");
+        String imageUrl = (String) request.getOrDefault("imageUrl", "");
 
-        log.info("Registering new concert: {} with price {}", title, price);
-        RegisterConcertResponse response = ticketServiceClient.registerConcert(title, seatCount, date, price);
+        log.info("Registering new concert: {} at {}, price {}", title, venue, price);
+        RegisterConcertResponse response = ticketServiceClient.registerConcert(title, seatCount, date, price, venue,
+                imageUrl);
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", response.getSuccess());

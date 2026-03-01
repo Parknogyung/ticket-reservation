@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -32,12 +33,15 @@ public class ConcertController {
 
         List<Map<String, Object>> concerts = options.stream().map(option -> {
             long availableSeats = seatRepository.findAvailableSeats(option.getId()).size();
-            return Map.<String, Object>of(
-                    "concertId", option.getId(),
-                    "title", option.getConcert().getTitle(),
-                    "concertDate", option.getConcertDate().format(DATE_FORMATTER),
-                    "price", option.getPrice(),
-                    "availableSeats", availableSeats);
+            Map<String, Object> m = new HashMap<>();
+            m.put("concertId", option.getId());
+            m.put("title", option.getConcert().getTitle());
+            m.put("concertDate", option.getConcertDate().format(DATE_FORMATTER));
+            m.put("price", option.getPrice());
+            m.put("availableSeats", availableSeats);
+            m.put("venue", option.getConcert().getVenue() != null ? option.getConcert().getVenue() : "");
+            m.put("imageUrl", option.getConcert().getImageUrl() != null ? option.getConcert().getImageUrl() : "");
+            return m;
         }).collect(Collectors.toList());
 
         return Map.of("concerts", concerts);
