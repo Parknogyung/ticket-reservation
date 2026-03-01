@@ -49,7 +49,9 @@ services:
     ports:
       - "8082:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_HOST=mariadb
+      - DB_PORT=3306
       - MONITOR_HOST=monitor-service
       - CLIENT_PUBLIC_HOST=localhost
       - LOGSTASH_HOST=logstash
@@ -68,7 +70,7 @@ services:
     ports:
       - "8083:8083"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=docker
       - TICKET_SERVER_HOST=ticket-server
       - PAYMENT_SERVICE_HOST=payment-service
       - AUTH_SERVICE_HOST=auth-service
@@ -92,7 +94,7 @@ services:
       - "8081:8081"
       - "9090:9090"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=docker
       - MONITOR_HOST=monitor-service
       - DB_HOST=mariadb
       - REDIS_HOST=redis
@@ -115,7 +117,7 @@ services:
       - "8087:8087"
       - "9097:9097"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=docker
       - GEMINI_API_KEY=AIzaSyCtktHS5uLi00F6RXClRt2rOYbFNu9D790
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - OLLAMA_MODEL=gemma3:4b
@@ -168,7 +170,7 @@ services:
       - "8084:8084"
       - "9091:9091"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=docker
       - MONITOR_HOST=monitor-service
       - TICKET_SERVER_HOST=ticket-server
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
@@ -187,7 +189,7 @@ services:
       - "8086:8086"
       - "9095:9095"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=docker
       - MONITOR_HOST=monitor-service
       - ELASTICSEARCH_HOST=elasticsearch
       - LOGSTASH_HOST=logstash

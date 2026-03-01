@@ -1,0 +1,14 @@
+# 로컬 개발 환경 설정 (spring.profiles.active=local)
+# IntelliJ: Run Configuration > Active profiles > "local"
+# 터미널: --spring.profiles.active=local
+
+spring:
+  datasource:
+    url: jdbc:mariadb://localhost:3636/ticket_db
+    username: root
+    password: 1234
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/

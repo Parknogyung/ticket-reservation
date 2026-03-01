@@ -16,7 +16,7 @@ public class WebController {
     @Value("${AUTH_SERVICE_URL:http://localhost:8082}")
     private String authServiceUrl;
 
-    @Value("${TICKET_SERVER_URL:http://ticket-server:8081}")
+    @Value("${TICKET_SERVER_URL:http://localhost:8081}")
     private String ticketServerUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -56,7 +56,8 @@ public class WebController {
             return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
         } catch (org.springframework.web.client.HttpClientErrorException e) {
             log.error("Register proxy error: {}", e.getMessage());
-            return ResponseEntity.status(e.getStatusCode()).body(Map.of("success", false, "message", e.getResponseBodyAsString()));
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("success", false, "message", e.getResponseBodyAsString()));
         } catch (Exception e) {
             log.error("Register proxy error", e);
             return ResponseEntity.status(500).body(Map.of("success", false, "message", "서버 오류가 발생했습니다."));

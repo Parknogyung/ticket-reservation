@@ -10,18 +10,18 @@ spring:
 # Ollama Configuration
 ollama:
   base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-  model: ${OLLAMA_MODEL:llama3.2:latest}
+  model: ${OLLAMA_MODEL:gemma3:4b}
 
 # AnythingLLM Configuration
 anythingllm:
   base-url: ${ANYTHINGLLM_BASE_URL:http://localhost:3001}
-  api-key: ${ANYTHINGLLM_API_KEY:}
+  api-key: ${ANYTHINGLLM_API_KEY:3N3QQWV-9KZM71C-HEARMXD-1RXN4C4}
   workspace-slug: ${ANYTHINGLLM_WORKSPACE:ticket-system}
 
 # Ticket Server URL for fetching project data
 ticket:
   server:
-    url: ${TICKET_SERVER_URL:http://ticket-server:8081}
+    url: ${TICKET_SERVER_URL:http://localhost:8081}
           
 server:
   port: 8087

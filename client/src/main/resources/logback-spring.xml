@@ -9,10 +9,9 @@
     <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
         <destination>${LOGSTASH_HOST:-localhost}:5000</destination>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-             <customFields>{"service":"client-service"}</customFields>
+            <customFields>{"service":"client-service"}</customFields>
         </encoder>
     </appender>
-
 
     <appender name="GRPC" class="com.ticket.portfolio.logging.GrpcLogAppender">
         <host>${MONITOR_HOST:-localhost}</host>
@@ -20,9 +19,19 @@
         <serviceName>${serviceName}</serviceName>
     </appender>
 
-    <root level="INFO">
-        <appender-ref ref="CONSOLE" />
-        <appender-ref ref="LOGSTASH" />
-        <appender-ref ref="GRPC" />
-    </root>
+    <!-- 로컬 환경: CONSOLE만 사용 -->
+    <springProfile name="default,local">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+        </root>
+    </springProfile>
+
+    <!-- Docker/운영 환경: CONSOLE + LOGSTASH + GRPC -->
+    <springProfile name="docker,prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+            <appender-ref ref="LOGSTASH" />
+            <appender-ref ref="GRPC" />
+        </root>
+    </springProfile>
 </configuration>

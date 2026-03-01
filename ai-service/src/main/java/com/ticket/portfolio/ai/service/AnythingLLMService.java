@@ -35,7 +35,7 @@ public class AnythingLLMService {
      */
     public String searchDocuments(String query) {
         try {
-            String url = anythingLLMBaseUrl + "/api/v1/workspace/" + workspaceSlug + "/query";
+            String url = anythingLLMBaseUrl + "/api/v1/workspace/" + workspaceSlug + "/chat";
 
             ObjectNode requestBody = objectMapper.createObjectNode();
             requestBody.put("message", query);
@@ -62,7 +62,7 @@ public class AnythingLLMService {
             log.warn("Cannot connect to AnythingLLM server: {}", e.getMessage());
             return null;
         } catch (Exception e) {
-            log.error("Error searching AnythingLLM", e);
+            log.warn("AnythingLLM search skipped: {}", e.getMessage());
             return null;
         }
     }
@@ -107,7 +107,7 @@ public class AnythingLLMService {
     private String extractRelevantContext(String responseBody) {
         try {
             JsonNode root = objectMapper.readTree(responseBody);
-            
+
             // AnythingLLM의 sources 필드에서 관련 문서 추출
             JsonNode sources = root.path("sources");
             if (!sources.isMissingNode() && sources.isArray()) {
@@ -120,7 +120,7 @@ public class AnythingLLMService {
                 }
                 return context.toString().trim();
             }
-            
+
             return null;
         } catch (Exception e) {
             log.error("Error extracting context from AnythingLLM response", e);
@@ -131,13 +131,13 @@ public class AnythingLLMService {
     private String extractChatResponse(String responseBody) {
         try {
             JsonNode root = objectMapper.readTree(responseBody);
-            
+
             // AnythingLLM의 textResponse 필드에서 응답 추출
             String textResponse = root.path("textResponse").asText();
             if (textResponse != null && !textResponse.isEmpty()) {
                 return textResponse;
             }
-            
+
             log.error("No textResponse found in AnythingLLM response: {}", responseBody);
             return null;
         } catch (Exception e) {
